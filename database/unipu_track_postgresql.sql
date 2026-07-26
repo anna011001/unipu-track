@@ -121,7 +121,7 @@ CREATE TABLE new_memberships (
     headquarters_country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL,
     joined_on               DATE,
     membership_type         VARCHAR(40),
-    annual_fee_eur          NUMERIC(3,2) CHECK (
+    annual_fee_eur          NUMERIC(5,2) CHECK (
         annual_fee_eur IS NULL OR annual_fee_eur BETWEEN 0 AND 999.99
     ),
     unipu_member_id         INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
@@ -150,7 +150,7 @@ CREATE TABLE active_memberships (
         AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT
     ),
     membership_type         VARCHAR(40),
-    annual_fee_eur          NUMERIC(3,2) CHECK (
+    annual_fee_eur          NUMERIC(5,2) CHECK (
         annual_fee_eur IS NULL OR annual_fee_eur BETWEEN 0 AND 999.99
     ),
     unipu_representative_id INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
@@ -171,7 +171,7 @@ CREATE TABLE membership_category_summaries (
     existing_memberships    SMALLINT NOT NULL DEFAULT 0 CHECK (existing_memberships BETWEEN 0 AND 9999),
     new_memberships         SMALLINT NOT NULL DEFAULT 0 CHECK (new_memberships BETWEEN 0 AND 9999),
     total_memberships       SMALLINT NOT NULL DEFAULT 0 CHECK (total_memberships BETWEEN 0 AND 9999),
-    share_percent           NUMERIC(3,2) CHECK (share_percent IS NULL OR share_percent BETWEEN 0 AND 100),
+    share_percent           NUMERIC(5,2) CHECK (share_percent IS NULL OR share_percent BETWEEN 0 AND 100),
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -616,8 +616,8 @@ CREATE TABLE international_conference_details (
     proceedings_indexing        VARCHAR(150),
     conference_website          TEXT,
     media_coverage              TEXT,
-    organization_cost_eur       NUMERIC(6,2) CHECK (
-        organization_cost_eur IS NULL OR organization_cost_eur BETWEEN 0 AND 9999999.99
+    organization_cost_eur       NUMERIC(8,2) CHECK (
+        organization_cost_eur IS NULL OR organization_cost_eur BETWEEN 0 AND 999999.99
     ),
     funding_sources             TEXT,
     created_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -633,7 +633,7 @@ CREATE TABLE conference_country_statistics (
     country_name            VARCHAR(100) NOT NULL,
     participant_count       SMALLINT CHECK (participant_count IS NULL OR participant_count BETWEEN 0 AND 9999),
     presentation_count      SMALLINT CHECK (presentation_count IS NULL OR presentation_count BETWEEN 0 AND 9999),
-    share_percent           NUMERIC(3,2) CHECK (
+    share_percent           NUMERIC(5,2) CHECK (
         share_percent IS NULL OR share_percent BETWEEN 0 AND 100
     ),
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -674,7 +674,7 @@ CREATE TABLE staff_mobility_unit_analyses (
     employee_count          SMALLINT NOT NULL DEFAULT 0 CHECK (employee_count BETWEEN 0 AND 9999),
     people_in_mobility_count SMALLINT NOT NULL DEFAULT 0 CHECK (people_in_mobility_count BETWEEN 0 AND 9999),
     mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
-    average_per_person      NUMERIC(5,2) CHECK (average_per_person IS NULL OR average_per_person BETWEEN 0 AND 999.99),
+    average_per_person      NUMERIC(4,2) CHECK (average_per_person IS NULL OR average_per_person BETWEEN 0 AND 99.99),
     erasmus_teaching_count  SMALLINT NOT NULL DEFAULT 0 CHECK (erasmus_teaching_count BETWEEN 0 AND 9999),
     erasmus_training_count  SMALLINT NOT NULL DEFAULT 0 CHECK (erasmus_training_count BETWEEN 0 AND 9999),
     ceepus_count            SMALLINT NOT NULL DEFAULT 0 CHECK (ceepus_count BETWEEN 0 AND 9999),
@@ -807,7 +807,7 @@ CREATE TABLE schedule_overload_cases (
     staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
     teaching_norm           SMALLINT CHECK (teaching_norm IS NULL OR teaching_norm BETWEEN 0 AND 9999),
     current_load            SMALLINT CHECK (current_load IS NULL OR current_load BETWEEN 0 AND 9999),
-    overload_percent        NUMERIC(3,2) CHECK (
+    overload_percent        NUMERIC(5,2) CHECK (
         overload_percent IS NULL OR overload_percent BETWEEN 0 AND 999.99
     ),
     courses_to_reassign     TEXT,
@@ -924,7 +924,7 @@ CREATE TABLE schedule_adjustment_effect_analyses (
     submitted_research_project_count SMALLINT NOT NULL DEFAULT 0 CHECK (submitted_research_project_count BETWEEN 0 AND 9999),
     published_paper_count   SMALLINT NOT NULL DEFAULT 0 CHECK (published_paper_count BETWEEN 0 AND 9999),
     q1_q2_paper_count       SMALLINT NOT NULL DEFAULT 0 CHECK (q1_q2_paper_count BETWEEN 0 AND 9999),
-    average_productivity_increase_percent NUMERIC(3,2) CHECK (
+    average_productivity_increase_percent NUMERIC(5,2) CHECK (
         average_productivity_increase_percent IS NULL
         OR average_productivity_increase_percent BETWEEN 0 AND 999.99
     ),
@@ -1036,7 +1036,7 @@ CREATE TABLE held_joint_events (
     thematic_field          VARCHAR(150),
     program_report_link     TEXT,
     media_coverage          TEXT,
-    cost_eur                NUMERIC(6,2) CHECK (cost_eur IS NULL OR cost_eur BETWEEN 0 AND 999999.99),
+    cost_eur                NUMERIC(8,2) CHECK (cost_eur IS NULL OR cost_eur BETWEEN 0 AND 999999.99),
     notes                   TEXT,
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -1059,7 +1059,7 @@ CREATE TABLE planned_joint_events (
     ),
     thematic_field          VARCHAR(150),
     preparation_status      VARCHAR(40),
-    estimated_cost_eur      NUMERIC(6,2) CHECK (
+    estimated_cost_eur      NUMERIC(8,2) CHECK (
         estimated_cost_eur IS NULL OR estimated_cost_eur BETWEEN 0 AND 999999.99
     ),
     funding_source          VARCHAR(150),
@@ -1099,10 +1099,10 @@ CREATE TABLE project_applications (
     unipu_role              VARCHAR(100),
     involved_units          TEXT,
     partner_institutions    TEXT,
-    total_project_amount_eur NUMERIC(6,2) CHECK (
+    total_project_amount_eur NUMERIC(8,2) CHECK (
         total_project_amount_eur IS NULL OR total_project_amount_eur BETWEEN 0 AND 999999.99
     ),
-    unipu_share_eur         NUMERIC(6,2) CHECK (
+    unipu_share_eur         NUMERIC(8,2) CHECK (
         unipu_share_eur IS NULL OR unipu_share_eur BETWEEN 0 AND 999999.99
     ),
     implementation_duration VARCHAR(100),
@@ -1280,7 +1280,7 @@ CREATE TABLE funded_projects (
     project_name        VARCHAR(250) NOT NULL,
     acronym             VARCHAR(30),
     funding_program     VARCHAR(150),
-    amount_eur          NUMERIC(6,2) CHECK (
+    amount_eur          NUMERIC(8,2) CHECK (
         amount_eur IS NULL OR amount_eur BETWEEN 0 AND 999999.99
     ),
     start_date          DATE,

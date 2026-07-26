@@ -6,7 +6,8 @@ dotenv.config();
 const { Pool } = pg;
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL,
+    options: "-c search_path=unipu_track,public"
 });
 
 pool.on('error', error => {
