@@ -5,38 +5,24 @@ SET search_path TO unipu_track, public;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
-
--- ENUM TYPES
-
-CREATE TYPE user_role AS ENUM ('PROFESSOR', 'ADMIN');
-CREATE TYPE document_status AS ENUM ('DRAFT', 'SUBMITTED', 'RETURNED', 'APPROVED', 'LOCKED', 'ARCHIVED');
-CREATE TYPE approval_decision AS ENUM ('PENDING', 'APPROVED', 'RETURNED', 'REJECTED');
-CREATE TYPE activity_action AS ENUM ('CREATED', 'UPDATED', 'SUBMITTED', 'APPROVED', 'RETURNED', 'LOCKED', 'UNLOCKED', 'PRINTED', 'EXPORTED', 'DELETED');
-CREATE TYPE record_phase AS ENUM ('PLANNED', 'ACTIVE', 'COMPLETED', 'CANCELLED');
-CREATE TYPE yes_no AS ENUM ('YES', 'NO');
-
--- COMMON / SECURITY / WORKFLOW TABLES
+-- ZAJEDNIČKE TEHNIČKE TABLICE
 
 CREATE TABLE organizational_units (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name                VARCHAR(160) NOT NULL,
-    short_name          VARCHAR(80),
-    unit_type           VARCHAR(80),
-    parent_id           BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name                VARCHAR(150) NOT NULL UNIQUE,
+    short_name          VARCHAR(20),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (name)
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE users (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    organizational_unit_id BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email               CITEXT NOT NULL UNIQUE,
-    password_hash       TEXT NOT NULL,
-    first_name          VARCHAR(120) NOT NULL,
-    last_name           VARCHAR(120) NOT NULL,
-    academic_title      VARCHAR(160),
-    role                user_role NOT NULL DEFAULT 'PROFESSOR',
+    password_hash       VARCHAR(255) NOT NULL,
+    first_name          VARCHAR(50) NOT NULL,
+    last_name           VARCHAR(80) NOT NULL,
+    role                VARCHAR(10) NOT NULL DEFAULT 'PROFESSOR'
+                        CHECK (role IN ('PROFESSOR', 'ADMIN')),
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at       TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -44,693 +30,1129 @@ CREATE TABLE users (
 );
 
 CREATE TABLE staff_members (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id             BIGINT UNIQUE REFERENCES users(id) ON DELETE SET NULL,
-    organizational_unit_id BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    first_name          VARCHAR(120) NOT NULL,
-    last_name           VARCHAR(120) NOT NULL,
-    academic_title      VARCHAR(160),
-    employment_status   VARCHAR(80) DEFAULT 'ACTIVE',
-    email               CITEXT,
-    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id                 INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    first_name              VARCHAR(50) NOT NULL,
+    last_name               VARCHAR(80) NOT NULL,
+    academic_title          VARCHAR(30),
+    email                   CITEXT,
+    is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE reporting_periods (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name                VARCHAR(80) NOT NULL,
-    period_type         VARCHAR(30) NOT NULL CHECK (period_type IN ('CALENDAR_YEAR', 'ACADEMIC_YEAR', 'CUSTOM')),
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    label               VARCHAR(20) NOT NULL UNIQUE,
+    period_type         VARCHAR(15) NOT NULL
+                        CHECK (period_type IN ('CALENDAR_YEAR', 'ACADEMIC_YEAR', 'CUSTOM')),
     start_date          DATE NOT NULL,
     end_date            DATE NOT NULL,
     is_closed           BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (end_date >= start_date),
-    UNIQUE (name, period_type)
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (end_date >= start_date)
 );
 
 CREATE TABLE countries (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     iso2_code           CHAR(2) UNIQUE,
-    name_hr             VARCHAR(120) NOT NULL UNIQUE,
-    name_en             VARCHAR(120),
-    region              VARCHAR(80),
-    is_active           BOOLEAN NOT NULL DEFAULT TRUE
+    name_hr             VARCHAR(100) NOT NULL UNIQUE,
+    name_en             VARCHAR(100),
+    region              VARCHAR(20) CHECK (
+        region IS NULL OR region IN (
+            'EU', 'OTHER_EUROPE', 'NORTH_AMERICA', 'SOUTH_AMERICA',
+            'ASIA', 'AFRICA', 'OCEANIA'
+        )
+    )
 );
 
 CREATE TABLE organizations (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name                VARCHAR(160) NOT NULL,
-    organization_type   VARCHAR(120),
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    city                VARCHAR(120),
-    website_url         TEXT,
-    contact_name        VARCHAR(150),
-    contact_email       CITEXT,
-    notes               TEXT,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name                VARCHAR(100) NOT NULL,
+    organization_type   VARCHAR(50),
+    country_id          INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    city                VARCHAR(50),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (name, country_id)
 );
 
--- One generic document row for every form/record
--- homepage, approvals, signatures, attachments, printing and audit logs
-CREATE TABLE documents (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    module_code         VARCHAR(80) NOT NULL,
-    title               VARCHAR(500) NOT NULL,
-    reporting_period_id BIGINT REFERENCES reporting_periods(id) ON DELETE SET NULL,
-    organizational_unit_id BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    owner_user_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    created_by          BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    updated_by          BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    status              document_status NOT NULL DEFAULT 'DRAFT',
-    submitted_at        TIMESTAMPTZ,
-    approved_at         TIMESTAMPTZ,
-    locked_at           TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_documents_owner_updated ON documents(owner_user_id, updated_at DESC);
-CREATE INDEX idx_documents_module_status ON documents(module_code, status);
-CREATE INDEX idx_documents_period ON documents(reporting_period_id);
-
-CREATE TABLE document_approvals (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    approver_user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    decision            approval_decision NOT NULL DEFAULT 'PENDING',
-    comment             TEXT,
-    signature_image_path TEXT,
-    decided_at          TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE attachments (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    uploaded_by         BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    file_name           VARCHAR(255) NOT NULL,
+CREATE TABLE record_files (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    record_type         VARCHAR(30) NOT NULL,
+    record_id           INTEGER NOT NULL,
+    file_role           VARCHAR(30),
+    file_name           VARCHAR(50) NOT NULL,
     storage_path        TEXT NOT NULL,
-    mime_type           VARCHAR(160),
-    file_size_bytes     BIGINT CHECK (file_size_bytes IS NULL OR file_size_bytes >= 0),
-    attachment_type     VARCHAR(80),
+    mime_type           VARCHAR(50),
+    file_size_bytes     INTEGER CHECK (file_size_bytes IS NULL OR file_size_bytes BETWEEN 0 AND 2147483647),
+    uploaded_by         INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE activity_log (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT REFERENCES documents(id) ON DELETE CASCADE,
-    user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    action              activity_action NOT NULL,
-    details             JSONB NOT NULL DEFAULT '{}'::jsonb,
+CREATE INDEX idx_record_files_record ON record_files(record_type, record_id);
+
+CREATE TABLE record_signatures (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    record_type         VARCHAR(60) NOT NULL,
+    record_id           INTEGER NOT NULL,
+    signer_role         VARCHAR(40) NOT NULL,
+    signer_name         VARCHAR(40),
+    signed_on           DATE,
+    signature_file_id   INTEGER REFERENCES record_files(id) ON DELETE SET NULL,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_activity_user_recent ON activity_log(user_id, created_at DESC);
-CREATE INDEX idx_activity_document_recent ON activity_log(document_id, created_at DESC);
+CREATE INDEX idx_record_signatures_record ON record_signatures(record_type, record_id);
 
+-- 1. EVIDENCIJA ČLANSTAVA
 
--- 1. MEMBERSHIPS IN SCIENTIFIC, PROFESSIONAL AND ART ORGANIZATIONS
-
-CREATE TABLE memberships (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    organization_id     BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    organization_name   VARCHAR(200) NOT NULL,
-    membership_domain   VARCHAR(40) NOT NULL CHECK (membership_domain IN ('SCIENTIFIC', 'PROFESSIONAL', 'ARTISTIC')),
-    membership_level    VARCHAR(40) CHECK (membership_level IN ('INTERNATIONAL', 'NATIONAL', 'REGIONAL', 'OTHER')),
-    headquarters_country_id BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    joined_on           DATE,
-    joined_year         SMALLINT,
-    membership_type     VARCHAR(160),
-    annual_fee_eur      NUMERIC(12,2) CHECK (annual_fee_eur IS NULL OR annual_fee_eur >= 0),
-    representative_staff_id BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    benefits            TEXT,
-    activities          TEXT,
-    evidence_url        TEXT,
-    membership_status   VARCHAR(50) DEFAULT 'ACTIVE',
-    is_new_in_period    BOOLEAN NOT NULL DEFAULT FALSE,
-    notes               TEXT
+CREATE TABLE new_memberships (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organization_id         INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
+    organization_name       VARCHAR(200) NOT NULL,
+    organization_kind       VARCHAR(20) NOT NULL
+                            CHECK (organization_kind IN ('SCIENTIFIC', 'PROFESSIONAL', 'ARTISTIC')),
+    organization_level      VARCHAR(20) NOT NULL
+                            CHECK (organization_level IN ('INTERNATIONAL', 'NATIONAL', 'REGIONAL')),
+    headquarters_country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    joined_on               DATE,
+    membership_type         VARCHAR(40),
+    annual_fee_eur          NUMERIC(3,2) CHECK (
+        annual_fee_eur IS NULL OR annual_fee_eur BETWEEN 0 AND 999.99
+    ),
+    unipu_member_id         INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    membership_benefits     TEXT,
+    evidence_link           TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE active_memberships (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organization_id         INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
+    organization_name       VARCHAR(200) NOT NULL,
+    organization_kind       VARCHAR(20) NOT NULL
+                            CHECK (organization_kind IN ('SCIENTIFIC', 'PROFESSIONAL', 'ARTISTIC')),
+    organization_level      VARCHAR(20) NOT NULL
+                            CHECK (organization_level IN ('INTERNATIONAL', 'NATIONAL', 'REGIONAL')),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    joined_year             SMALLINT CHECK (
+        joined_year IS NULL OR joined_year BETWEEN 1950
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT
+    ),
+    membership_type         VARCHAR(40),
+    annual_fee_eur          NUMERIC(3,2) CHECK (
+        annual_fee_eur IS NULL OR annual_fee_eur BETWEEN 0 AND 999.99
+    ),
+    unipu_representative_id INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    organization_activities TEXT,
+    membership_status       VARCHAR(20),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 2. PROFESSIONAL DEVELOPMENT
+CREATE TABLE membership_category_summaries (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    category_name           VARCHAR(100) NOT NULL,
+    existing_memberships    SMALLINT NOT NULL DEFAULT 0 CHECK (existing_memberships BETWEEN 0 AND 9999),
+    new_memberships         SMALLINT NOT NULL DEFAULT 0 CHECK (new_memberships BETWEEN 0 AND 9999),
+    total_memberships       SMALLINT NOT NULL DEFAULT 0 CHECK (total_memberships BETWEEN 0 AND 9999),
+    share_percent           NUMERIC(3,2) CHECK (share_percent IS NULL OR share_percent BETWEEN 0 AND 100),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. STRUČNA USAVRŠAVANJA
 
 CREATE TABLE professional_developments (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    development_type    VARCHAR(120) NOT NULL,
-    program_name        VARCHAR(500) NOT NULL,
-    host_organization_id BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    host_organization_name VARCHAR(200),
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    start_date          DATE,
-    end_date            DATE,
-    media_url           TEXT,
-    notes               TEXT,
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    development_type        VARCHAR(30) NOT NULL CHECK (
+        development_type IN (
+            'STUDY_VISIT', 'WORKSHOP', 'CONFERENCE',
+            'COURSE_CERTIFICATE', 'SUMMER_SCHOOL'
+        )
+    ),
+    program_name            VARCHAR(250) NOT NULL,
+    host_organization_id    INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
+    host_organization_name  VARCHAR(200),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    start_date              DATE,
+    end_date                DATE,
+    media_link              TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
 );
 
-CREATE TABLE external_confirmations (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    organization_name   VARCHAR(200) NOT NULL,
-    signer_name         VARCHAR(150),
-    signer_role         VARCHAR(160),
-    signed_on           DATE,
-    signature_file_path TEXT,
-    stamp_file_path     TEXT,
-    confirmation_url    TEXT,
-    notes               TEXT
+CREATE TABLE professional_development_confirmations (
+    id                          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    professional_development_id INTEGER REFERENCES professional_developments(id) ON DELETE SET NULL,
+    institution_name            VARCHAR(200) NOT NULL,
+    signer_name                 VARCHAR(40),
+    signer_function             VARCHAR(40),
+    confirmation_date           DATE,
+    seal_present                BOOLEAN,
+    created_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE media_links (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    item_name           VARCHAR(500),
-    media_type          VARCHAR(100),
-    url                 TEXT NOT NULL,
-    published_on        DATE,
-    notes               TEXT
+CREATE TABLE professional_development_media (
+    id                          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    professional_development_id INTEGER REFERENCES professional_developments(id) ON DELETE SET NULL,
+    development_name            VARCHAR(250) NOT NULL,
+    media_type                  VARCHAR(80),
+    media_link                  TEXT NOT NULL,
+    published_on                DATE,
+    created_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-
--- 3. PARTICIPATION IN SCIENTIFIC AND PROFESSIONAL EVENTS
+-- 3. SUDJELOVANJA NA ZNANSTVENIM I STRUČNIM SKUPOVIMA
 
 CREATE TABLE event_participations (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    participation_type  VARCHAR(120) NOT NULL,
-    event_name          VARCHAR(500) NOT NULL,
-    organizer_name      VARCHAR(255),
-    location            VARCHAR(160),
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    event_date          DATE,
-    presentation_title  TEXT,
-    program_url         TEXT,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    participation_type      VARCHAR(40) NOT NULL CHECK (
+        participation_type IN (
+            'ORAL_PRESENTATION',
+            'POSTER_PRESENTATION',
+            'PLENARY_LECTURE',
+            'PANELIST',
+            'ORGANIZING_COMMITTEE_MEMBER'
+        )
+    ),
+    event_name              VARCHAR(250) NOT NULL,
+    organizer_name          VARCHAR(200),
+    location                VARCHAR(150),
+    event_date              DATE,
+    presentation_title      TEXT,
+    program_link            TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE event_organizer_confirmations (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    event_participation_id  INTEGER REFERENCES event_participations(id) ON DELETE SET NULL,
+    event_name              VARCHAR(250) NOT NULL,
+    committee_president_name VARCHAR(120),
+    organizer_institution   VARCHAR(200),
+    confirmation_date       DATE,
+    impressum_link          TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 4. WORKSHOPS
+CREATE TABLE event_media (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    event_participation_id  INTEGER REFERENCES event_participations(id) ON DELETE SET NULL,
+    event_name              VARCHAR(250) NOT NULL,
+    media_type              VARCHAR(80),
+    media_link              TEXT NOT NULL,
+    published_on            DATE,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- 4. ODRŽANE RADIONICE
 
 CREATE TABLE workshops (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    name                VARCHAR(500) NOT NULL,
-    leaders_text        TEXT,
-    organizational_unit_id BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    target_group        VARCHAR(160),
-    participant_count   INTEGER CHECK (participant_count IS NULL OR participant_count >= 0),
-    location            VARCHAR(160),
-    held_on             DATE,
-    duration_hours      NUMERIC(7,2) CHECK (duration_hours IS NULL OR duration_hours >= 0),
-    content_description TEXT,
-    goals               TEXT,
-    learning_outcomes   TEXT,
-    work_methods        TEXT,
-    materials_resources TEXT,
-    evaluation          TEXT,
-    media_url           TEXT,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    workshop_name           VARCHAR(250) NOT NULL,
+    workshop_leaders        TEXT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    target_group            VARCHAR(30) NOT NULL CHECK (
+        target_group IN (
+            'STUDENTS', 'TEACHERS', 'PUBLIC', 'EMPLOYEES', 'DOCTORAL_STUDENTS'
+        )
+    ),
+    participant_count       SMALLINT CHECK (
+        participant_count IS NULL OR participant_count BETWEEN 0 AND 9999
+    ),
+    location                VARCHAR(150),
+    held_on                 DATE,
+    duration_hours          SMALLINT CHECK (
+        duration_hours IS NULL OR duration_hours BETWEEN 0 AND 999
+    ),
+    content_description     TEXT,
+    leader_signature_file_id INTEGER REFERENCES record_files(id) ON DELETE SET NULL,
+    media_link              TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE workshop_leaders (
-    workshop_id         BIGINT NOT NULL REFERENCES workshops(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE CASCADE,
-    is_primary          BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (workshop_id, staff_member_id)
+CREATE TABLE workshop_details (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    workshop_id             INTEGER NOT NULL UNIQUE REFERENCES workshops(id) ON DELETE CASCADE,
+    goals                   TEXT,
+    learning_outcomes       TEXT,
+    work_methods            TEXT,
+    materials_resources     TEXT,
+    evaluation              TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE workshop_media (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    workshop_id             INTEGER REFERENCES workshops(id) ON DELETE SET NULL,
+    workshop_name           VARCHAR(250) NOT NULL,
+    media_type              VARCHAR(80),
+    media_link              TEXT NOT NULL,
+    published_on            DATE,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 5. CO-AUTHORED SCIENTIFIC PAPERS
+-- 5. KOAUTORSTVO NA ZNANSTVENIM RADOVIMA
+
+CREATE TABLE coauthorship_year_totals (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    calendar_year           SMALLINT NOT NULL CHECK (
+        calendar_year BETWEEN 2000
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    paper_count             SMALLINT NOT NULL DEFAULT 0 CHECK (paper_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (reporting_period_id, calendar_year)
+);
 
 CREATE TABLE coauthored_papers (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    authors_and_title   TEXT NOT NULL,
-    publication_year    SMALLINT NOT NULL CHECK (publication_year BETWEEN 1900 AND 2200),
-    publication_url     TEXT,
-    doi                 VARCHAR(255),
-    paper_category      VARCHAR(80) CHECK (paper_category IN ('WOS_SCOPUS_Q1_Q2', 'WOS_SCOPUS_Q3_Q4', 'OTHER_INTERNATIONAL_JOURNAL', 'DOMESTIC_JOURNAL', 'BOOK_CHAPTER', 'PROCEEDINGS', 'OTHER')),
-    international_coauthor BOOLEAN NOT NULL DEFAULT TRUE,
-    publication_status  VARCHAR(40) DEFAULT 'PUBLISHED',
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    authors_and_title       TEXT NOT NULL,
+    publication_year        SMALLINT NOT NULL CHECK (
+        publication_year BETWEEN 2000
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    publication_link        TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE coauthorship_category_summaries (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id INTEGER NOT NULL
+                        REFERENCES reporting_periods(id)
+                        ON DELETE RESTRICT,
+    category            VARCHAR(50) NOT NULL CHECK (
+        category IN (
+            'WOS_SCOPUS_Q1_Q2',
+            'WOS_SCOPUS_Q3_Q4',
+            'OTHER_INTERNATIONAL_JOURNALS',
+            'DOMESTIC_JOURNALS',
+            'BOOK_CHAPTERS',
+            'CONFERENCE_PROCEEDINGS',
+            'TOTAL'
+        )
+    ),
+    calendar_year       SMALLINT NOT NULL CHECK (
+        calendar_year BETWEEN 2000
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    paper_count         SMALLINT NOT NULL DEFAULT 0 CHECK (
+        paper_count BETWEEN 0 AND 9999
+    ),
+    created_by          INTEGER NOT NULL
+                        REFERENCES users(id)
+                        ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL
+                        REFERENCES users(id)
+                        ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (
+        reporting_period_id,
+        category,
+        calendar_year
+    )
+);
 
--- 6. INTERNATIONAL VISITING RESEARCHERS
+-- 6. MEĐUNARODNI GOSTUJUĆI ISTRAŽIVAČI
 
-CREATE TABLE visiting_researcher_visits (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    researcher_name     VARCHAR(150) NOT NULL,
-    academic_title      VARCHAR(160),
-    home_organization_id BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    home_organization_name VARCHAR(200),
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    scientific_field    VARCHAR(160),
-    arrival_date        DATE,
-    departure_date      DATE,
-    host_unit_id        BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    mentor_staff_id     BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    mentor_contact_text VARCHAR(180),
-    activities          TEXT,
-    results             TEXT,
-    visit_phase         record_phase NOT NULL DEFAULT 'PLANNED',
-    invitation_status   VARCHAR(80),
-    funding_source      VARCHAR(160),
-    notes               TEXT,
+CREATE TABLE realized_visiting_researchers (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    researcher_name         VARCHAR(120) NOT NULL,
+    academic_title          VARCHAR(30),
+    home_institution        VARCHAR(200),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    scientific_field        VARCHAR(150),
+    arrival_date            DATE,
+    departure_date          DATE,
+    duration_days           SMALLINT CHECK (
+        duration_days IS NULL OR duration_days BETWEEN 0 AND 999
+    ),
+    host_unit_id            INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    mentor_contact          VARCHAR(150),
+    activities_during_stay  TEXT,
+    results                 TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (departure_date IS NULL OR arrival_date IS NULL OR departure_date >= arrival_date)
 );
 
+CREATE TABLE planned_visiting_researchers (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    researcher_name         VARCHAR(120) NOT NULL,
+    academic_title          VARCHAR(30),
+    home_institution        VARCHAR(200),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    scientific_field        VARCHAR(150),
+    planned_period          VARCHAR(100),
+    duration                VARCHAR(60),
+    host_unit_id            INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    mentor                  VARCHAR(120),
+    planned_activities      TEXT,
+    invitation_status       VARCHAR(40),
+    funding_source          VARCHAR(150),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 7. STAKEHOLDER MAPPING
+CREATE TABLE visiting_researcher_unit_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER NOT NULL REFERENCES organizational_units(id) ON DELETE RESTRICT,
+    visit_count             SMALLINT NOT NULL DEFAULT 0 CHECK (visit_count BETWEEN 0 AND 9999),
+    total_days              INTEGER NOT NULL DEFAULT 0 CHECK (total_days BETWEEN 0 AND 999999),
+    lecture_count           SMALLINT NOT NULL DEFAULT 0 CHECK (lecture_count BETWEEN 0 AND 9999),
+    publication_count       SMALLINT NOT NULL DEFAULT 0 CHECK (publication_count BETWEEN 0 AND 9999),
+    project_count           SMALLINT NOT NULL DEFAULT 0 CHECK (project_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 7. MAPIRANJE KLJUČNIH DIONIKA
 
 CREATE TABLE stakeholder_analyses (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    analysis_date       DATE,
-    responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    analysis_date           DATE,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    responsible_person      VARCHAR(120),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE stakeholders (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    stakeholder_analysis_id BIGINT NOT NULL REFERENCES stakeholder_analyses(id) ON DELETE CASCADE,
-    organization_id     BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    organization_name   VARCHAR(200) NOT NULL,
-    stakeholder_area    VARCHAR(40) NOT NULL CHECK (stakeholder_area IN ('SCIENCE', 'ART', 'PROFESSION')),
-    stakeholder_type    VARCHAR(160),
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    activity_field      VARCHAR(160),
-    contact_name        VARCHAR(150),
-    contact_email       CITEXT,
-    existing_cooperation BOOLEAN,
-    unipu_membership    BOOLEAN,
-    cooperation_type    VARCHAR(120),
-    cooperation_potential TEXT,
-    priority            SMALLINT CHECK (priority BETWEEN 1 AND 5),
-    planned_activities  TEXT,
-    stakeholder_status  VARCHAR(80),
-    notes               TEXT
+CREATE TABLE science_stakeholders (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stakeholder_analysis_id INTEGER NOT NULL REFERENCES stakeholder_analyses(id) ON DELETE CASCADE,
+    organization_name       VARCHAR(200) NOT NULL,
+    stakeholder_type        VARCHAR(100),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    scientific_field        VARCHAR(150),
+    contact_name            VARCHAR(120),
+    contact_email           CITEXT,
+    existing_cooperation    BOOLEAN,
+    cooperation_type        VARCHAR(120),
+    cooperation_potential   TEXT,
+    priority                SMALLINT CHECK (priority BETWEEN 1 AND 5),
+    planned_activities      TEXT,
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE artistic_stakeholders (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stakeholder_analysis_id INTEGER NOT NULL REFERENCES stakeholder_analyses(id) ON DELETE CASCADE,
+    organization_name       VARCHAR(200) NOT NULL,
+    stakeholder_type        VARCHAR(100),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    scientific_field        VARCHAR(150),
+    contact_name            VARCHAR(120),
+    contact_email           CITEXT,
+    existing_cooperation    BOOLEAN,
+    cooperation_type        VARCHAR(120),
+    cooperation_potential   TEXT,
+    priority                SMALLINT CHECK (priority BETWEEN 1 AND 5),
+    planned_activities      TEXT,
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 8. INTERNATIONAL CONFERENCES ORGANIZED / CO-ORGANIZED
+CREATE TABLE professional_stakeholders (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stakeholder_analysis_id INTEGER NOT NULL REFERENCES stakeholder_analyses(id) ON DELETE CASCADE,
+    organization_name       VARCHAR(200) NOT NULL,
+    organization_kind       VARCHAR(100),
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    activity_field          VARCHAR(150),
+    contact_name            VARCHAR(120),
+    contact_email           CITEXT,
+    unipu_membership        BOOLEAN,
+    cooperation_type        VARCHAR(120),
+    cooperation_potential   TEXT,
+    priority                SMALLINT CHECK (priority BETWEEN 1 AND 5),
+    planned_activities      TEXT,
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE stakeholder_analysis_summaries (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stakeholder_analysis_id INTEGER NOT NULL UNIQUE REFERENCES stakeholder_analyses(id) ON DELETE CASCADE,
+    science_stakeholder_count SMALLINT NOT NULL DEFAULT 0 CHECK (science_stakeholder_count BETWEEN 0 AND 9999),
+    art_stakeholder_count   SMALLINT NOT NULL DEFAULT 0 CHECK (art_stakeholder_count BETWEEN 0 AND 9999),
+    profession_stakeholder_count SMALLINT NOT NULL DEFAULT 0 CHECK (profession_stakeholder_count BETWEEN 0 AND 9999),
+    total_stakeholder_count SMALLINT NOT NULL DEFAULT 0 CHECK (total_stakeholder_count BETWEEN 0 AND 9999),
+    existing_cooperation_count SMALLINT NOT NULL DEFAULT 0 CHECK (existing_cooperation_count BETWEEN 0 AND 9999),
+    high_potential_count    SMALLINT NOT NULL DEFAULT 0 CHECK (high_potential_count BETWEEN 0 AND 9999),
+    planned_new_cooperation_count SMALLINT NOT NULL DEFAULT 0 CHECK (planned_new_cooperation_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 8. MEĐUNARODNE KONFERENCIJE
 
 CREATE TABLE international_conferences (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    name                VARCHAR(500) NOT NULL,
-    english_name        VARCHAR(500),
-    held_on             DATE,
-    location            VARCHAR(160),
-    organizer_unit_id   BIGINT REFERENCES organizational_units(id) ON DELETE SET NULL,
-    co_organizers       TEXT,
-    scientific_field    VARCHAR(160),
-    total_participants  INTEGER CHECK (total_participants IS NULL OR total_participants >= 0),
-    foreign_participants INTEGER CHECK (foreign_participants IS NULL OR foreign_participants >= 0),
-    country_count       INTEGER CHECK (country_count IS NULL OR country_count >= 0),
-    presentation_count  INTEGER CHECK (presentation_count IS NULL OR presentation_count >= 0),
-    published_paper_count INTEGER CHECK (published_paper_count IS NULL OR published_paper_count >= 0),
-    submitted_abstract_count INTEGER CHECK (submitted_abstract_count IS NULL OR submitted_abstract_count >= 0),
-    accepted_abstract_count INTEGER CHECK (accepted_abstract_count IS NULL OR accepted_abstract_count >= 0),
-    plenary_lecture_count INTEGER CHECK (plenary_lecture_count IS NULL OR plenary_lecture_count >= 0),
-    section_count       INTEGER CHECK (section_count IS NULL OR section_count >= 0),
-    organizing_committee_chair VARCHAR(150),
-    program_committee_chair VARCHAR(150),
-    unipu_program_committee_members TEXT,
-    foreign_program_committee_members TEXT,
-    proceedings_indexing VARCHAR(160),
-    website_url         TEXT,
-    proceedings_url     TEXT,
-    media_coverage      TEXT,
-    total_cost_eur      NUMERIC(14,2) CHECK (total_cost_eur IS NULL OR total_cost_eur >= 0),
-    funding_sources     TEXT,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    conference_name         VARCHAR(250) NOT NULL,
+    held_on                 DATE,
+    location                VARCHAR(150),
+    organizer_unit_id       INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    coorganizers            TEXT,
+    scientific_field        VARCHAR(150),
+    total_participants      SMALLINT CHECK (total_participants IS NULL OR total_participants BETWEEN 0 AND 9999),
+    foreign_participants    SMALLINT CHECK (foreign_participants IS NULL OR foreign_participants BETWEEN 0 AND 9999),
+    country_count           SMALLINT CHECK (country_count IS NULL OR country_count BETWEEN 0 AND 250),
+    presentation_count      SMALLINT CHECK (presentation_count IS NULL OR presentation_count BETWEEN 0 AND 9999),
+    published_paper_count   SMALLINT CHECK (published_paper_count IS NULL OR published_paper_count BETWEEN 0 AND 9999),
+    web_or_proceedings_link TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE international_conference_details (
+    id                          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conference_id               INTEGER NOT NULL UNIQUE REFERENCES international_conferences(id) ON DELETE CASCADE,
+    english_name                VARCHAR(250),
+    date_and_location           VARCHAR(250),
+    organizing_committee_chair  VARCHAR(120),
+    program_committee_chair     VARCHAR(120),
+    unipu_program_members       TEXT,
+    foreign_program_members     TEXT,
+    submitted_abstract_count    SMALLINT CHECK (submitted_abstract_count IS NULL OR submitted_abstract_count BETWEEN 0 AND 9999),
+    accepted_abstract_count     SMALLINT CHECK (accepted_abstract_count IS NULL OR accepted_abstract_count BETWEEN 0 AND 9999),
+    plenary_lecture_count       SMALLINT CHECK (plenary_lecture_count IS NULL OR plenary_lecture_count BETWEEN 0 AND 999),
+    section_count               SMALLINT CHECK (section_count IS NULL OR section_count BETWEEN 0 AND 999),
+    proceedings_indexing        VARCHAR(150),
+    conference_website          TEXT,
+    media_coverage              TEXT,
+    organization_cost_eur       NUMERIC(6,2) CHECK (
+        organization_cost_eur IS NULL OR organization_cost_eur BETWEEN 0 AND 9999999.99
+    ),
+    funding_sources             TEXT,
+    created_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by                  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE conference_country_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    conference_id       BIGINT NOT NULL REFERENCES international_conferences(id) ON DELETE CASCADE,
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    country_name        VARCHAR(120),
-    participant_count   INTEGER NOT NULL DEFAULT 0 CHECK (participant_count >= 0),
-    presentation_count  INTEGER NOT NULL DEFAULT 0 CHECK (presentation_count >= 0),
-    UNIQUE (conference_id, country_id, country_name)
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conference_id           INTEGER NOT NULL REFERENCES international_conferences(id) ON DELETE CASCADE,
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    country_name            VARCHAR(100) NOT NULL,
+    participant_count       SMALLINT CHECK (participant_count IS NULL OR participant_count BETWEEN 0 AND 9999),
+    presentation_count      SMALLINT CHECK (presentation_count IS NULL OR presentation_count BETWEEN 0 AND 9999),
+    share_percent           NUMERIC(3,2) CHECK (
+        share_percent IS NULL OR share_percent BETWEEN 0 AND 100
+    ),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-
--- 9. INTERNATIONAL STAFF MOBILITY
+-- 9. MEĐUNARODNA MOBILNOST OSOBLJA
 
 CREATE TABLE staff_mobilities (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    mobility_type       VARCHAR(160) NOT NULL,
-    program_name        VARCHAR(160),
-    host_organization_id BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    host_organization_name VARCHAR(200),
-    destination_country_id BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    start_date          DATE,
-    end_date            DATE,
-    purpose             TEXT,
-    activities          TEXT,
-    results             TEXT,
-    notes               TEXT,
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    mobility_type           VARCHAR(100) NOT NULL,
+    program_name            VARCHAR(100),
+    host_institution        VARCHAR(200),
+    destination_country_id  INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    start_date              DATE,
+    end_date                DATE,
+    duration_days           SMALLINT CHECK (duration_days IS NULL OR duration_days BETWEEN 0 AND 999),
+    mobility_purpose        TEXT,
+    activities              TEXT,
+    results                 TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
 );
 
+CREATE TABLE staff_mobility_unit_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER NOT NULL REFERENCES organizational_units(id) ON DELETE RESTRICT,
+    employee_count          SMALLINT NOT NULL DEFAULT 0 CHECK (employee_count BETWEEN 0 AND 9999),
+    people_in_mobility_count SMALLINT NOT NULL DEFAULT 0 CHECK (people_in_mobility_count BETWEEN 0 AND 9999),
+    mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
+    average_per_person      NUMERIC(5,2) CHECK (average_per_person IS NULL OR average_per_person BETWEEN 0 AND 999.99),
+    erasmus_teaching_count  SMALLINT NOT NULL DEFAULT 0 CHECK (erasmus_teaching_count BETWEEN 0 AND 9999),
+    erasmus_training_count  SMALLINT NOT NULL DEFAULT 0 CHECK (erasmus_training_count BETWEEN 0 AND 9999),
+    ceepus_count            SMALLINT NOT NULL DEFAULT 0 CHECK (ceepus_count BETWEEN 0 AND 9999),
+    bilateral_count         SMALLINT NOT NULL DEFAULT 0 CHECK (bilateral_count BETWEEN 0 AND 9999),
+    other_count             SMALLINT NOT NULL DEFAULT 0 CHECK (other_count BETWEEN 0 AND 9999),
+    total_days              INTEGER NOT NULL DEFAULT 0 CHECK (total_days BETWEEN 0 AND 999999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 10. INTERNATIONAL COOPERATION / AGREEMENTS
+CREATE TABLE staff_multiple_mobility_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
+    total_days              INTEGER NOT NULL DEFAULT 0 CHECK (total_days BETWEEN 0 AND 999999),
+    countries               TEXT,
+    programs                TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-CREATE TABLE international_cooperations (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    partner_organization_id BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    partner_name        VARCHAR(200) NOT NULL,
-    country_id          BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    cooperation_domain  VARCHAR(40) CHECK (cooperation_domain IN ('SCIENTIFIC', 'ARTISTIC', 'PROFESSIONAL', 'MULTIDISCIPLINARY')),
-    cooperation_field   VARCHAR(160),
-    start_date          DATE,
-    duration_text       VARCHAR(160),
-    agreement_type      VARCHAR(160),
-    signed_on           DATE,
-    valid_until         DATE,
-    unipu_contact_staff_id BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    planned_activities  TEXT,
-    completed_activities TEXT,
-    agreement_url       TEXT,
-    cooperation_status  VARCHAR(80),
-    is_new_in_period    BOOLEAN NOT NULL DEFAULT FALSE,
-    notes               TEXT,
+CREATE TABLE staff_mobility_country_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    country_name            VARCHAR(100) NOT NULL,
+    mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
+    people_count            SMALLINT NOT NULL DEFAULT 0 CHECK (people_count BETWEEN 0 AND 9999),
+    total_days              INTEGER NOT NULL DEFAULT 0 CHECK (total_days BETWEEN 0 AND 999999),
+    most_common_program     VARCHAR(100),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 10. MEĐUNARODNA SURADNJA
+
+CREATE TABLE new_international_cooperations (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    partner_institution     VARCHAR(100) NOT NULL,
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    cooperation_kind        VARCHAR(20) CHECK (
+        cooperation_kind IN ('SCIENTIFIC', 'ARTISTIC', 'PROFESSIONAL')
+    ),
+    cooperation_field       VARCHAR(150),
+    start_date              DATE,
+    duration                VARCHAR(80),
+    agreement_type          VARCHAR(100),
+    unipu_contact_person    VARCHAR(120),
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    planned_activities      TEXT,
+    agreement_link          TEXT,
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE active_international_agreements (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    partner_institution     VARCHAR(100) NOT NULL,
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    cooperation_kind        VARCHAR(20) CHECK (
+        cooperation_kind IN ('SCIENTIFIC', 'ARTISTIC', 'PROFESSIONAL')
+    ),
+    agreement_type          VARCHAR(100),
+    signed_on               DATE,
+    valid_until             DATE,
+    responsible_person      VARCHAR(120),
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    completed_activities    TEXT,
+    planned_activities      TEXT,
+    status                  VARCHAR(40),
+    document_link           TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (valid_until IS NULL OR signed_on IS NULL OR valid_until >= signed_on)
 );
 
+CREATE TABLE international_cooperation_region_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    region                  VARCHAR(20) NOT NULL CHECK (
+        region IN (
+            'EU', 'OTHER_EUROPE', 'NORTH_AMERICA', 'SOUTH_AMERICA',
+            'ASIA', 'AFRICA', 'OCEANIA'
+        )
+    ),
+    scientific_count        SMALLINT NOT NULL DEFAULT 0 CHECK (scientific_count BETWEEN 0 AND 9999),
+    artistic_count          SMALLINT NOT NULL DEFAULT 0 CHECK (artistic_count BETWEEN 0 AND 9999),
+    professional_count      SMALLINT NOT NULL DEFAULT 0 CHECK (professional_count BETWEEN 0 AND 9999),
+    total_count             SMALLINT NOT NULL DEFAULT 0 CHECK (total_count BETWEEN 0 AND 9999),
+    new_count               SMALLINT NOT NULL DEFAULT 0 CHECK (new_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 11. OPTIMIZED TEACHING STAFF SCHEDULE
+-- 11. OPTIMIZIRANI RASPORED NASTAVNIKA
 
 CREATE TABLE schedule_optimization_reports (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    academic_year       VARCHAR(20) NOT NULL,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    academic_year           VARCHAR(11) NOT NULL,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE schedule_overload_cases (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES schedule_optimization_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    teaching_norm       NUMERIC(10,2),
-    current_load        NUMERIC(10,2),
-    overload_percent    NUMERIC(7,2),
-    courses_to_reassign TEXT,
-    relief_proposal     TEXT,
-    proposed_replacement_staff_id BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    proposed_replacement_text VARCHAR(200),
-    planned_reduction   NUMERIC(10,2),
-    case_status         VARCHAR(80),
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES schedule_optimization_reports(id) ON DELETE CASCADE,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    teaching_norm           SMALLINT CHECK (teaching_norm IS NULL OR teaching_norm BETWEEN 0 AND 9999),
+    current_load            SMALLINT CHECK (current_load IS NULL OR current_load BETWEEN 0 AND 9999),
+    overload_percent        NUMERIC(3,2) CHECK (
+        overload_percent IS NULL OR overload_percent BETWEEN 0 AND 999.99
+    ),
+    courses_to_reassign     TEXT,
+    relief_proposal         TEXT,
+    proposed_course_holder  VARCHAR(120),
+    planned_reduction       SMALLINT CHECK (planned_reduction IS NULL OR planned_reduction BETWEEN 0 AND 9999),
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE academic_promotion_cases (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES schedule_optimization_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    current_title       VARCHAR(160),
-    candidate_title     VARCHAR(160),
-    election_deadline   DATE,
-    current_load        NUMERIC(10,2),
-    proposed_load       NUMERIC(10,2),
-    courses_to_reassign TEXT,
-    replacement_staff_id BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    replacement_text    VARCHAR(200),
-    research_time_text  VARCHAR(160),
-    procedure_status    VARCHAR(80),
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES schedule_optimization_reports(id) ON DELETE CASCADE,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    current_title           VARCHAR(30),
+    candidate_title         VARCHAR(30),
+    election_deadline       DATE,
+    current_load            SMALLINT CHECK (current_load IS NULL OR current_load BETWEEN 0 AND 9999),
+    proposed_load           SMALLINT CHECK (proposed_load IS NULL OR proposed_load BETWEEN 0 AND 9999),
+    courses_to_reassign     TEXT,
+    replacement_course_holder VARCHAR(120),
+    research_time           VARCHAR(100),
+    procedure_status        VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE schedule_optimization_summaries (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL UNIQUE REFERENCES schedule_optimization_reports(id) ON DELETE CASCADE,
+    teachers_over_norm_count SMALLINT NOT NULL DEFAULT 0 CHECK (teachers_over_norm_count BETWEEN 0 AND 9999),
+    teachers_in_reelection_count SMALLINT NOT NULL DEFAULT 0 CHECK (teachers_in_reelection_count BETWEEN 0 AND 9999),
+    redistribution_hours    INTEGER NOT NULL DEFAULT 0 CHECK (redistribution_hours BETWEEN 0 AND 999999),
+    courses_for_redistribution_count SMALLINT NOT NULL DEFAULT 0 CHECK (courses_for_redistribution_count BETWEEN 0 AND 9999),
+    replacement_holders_needed SMALLINT NOT NULL DEFAULT 0 CHECK (replacement_holders_needed BETWEEN 0 AND 9999),
+    estimated_research_time_hours INTEGER NOT NULL DEFAULT 0 CHECK (estimated_research_time_hours BETWEEN 0 AND 999999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 12. TEACHING SCHEDULE ADJUSTMENTS FOR RESEARCH
+-- 12. PRILAGODBA RASPOREDA NASTAVE
 
 CREATE TABLE schedule_adjustment_reports (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    academic_year       VARCHAR(20) NOT NULL,
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    academic_year           VARCHAR(11) NOT NULL,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE schedule_adjustment_measures (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
-    measure_type        VARCHAR(160) NOT NULL,
-    description         TEXT,
-    beneficiary_count   INTEGER CHECK (beneficiary_count IS NULL OR beneficiary_count >= 0),
-    released_hours_per_week NUMERIC(8,2) CHECK (released_hours_per_week IS NULL OR released_hours_per_week >= 0),
-    application_period  VARCHAR(160),
-    measure_status      VARCHAR(80)
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
+    measure_type            VARCHAR(100) NOT NULL,
+    measure_description     TEXT,
+    beneficiary_count       SMALLINT CHECK (beneficiary_count IS NULL OR beneficiary_count BETWEEN 0 AND 9999),
+    released_hours_per_week SMALLINT CHECK (released_hours_per_week IS NULL OR released_hours_per_week BETWEEN 0 AND 168),
+    application_period      VARCHAR(100),
+    status                  VARCHAR(40),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE schedule_adjustment_beneficiaries (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    measure_type        VARCHAR(160),
-    reason              TEXT,
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    measure_type            VARCHAR(100),
+    adjustment_reason       TEXT,
     research_project_activity TEXT,
-    released_time_text  VARCHAR(160),
-    application_period  VARCHAR(160),
-    results             TEXT,
-    beneficiary_status  VARCHAR(80)
+    released_time           VARCHAR(100),
+    application_period      VARCHAR(100),
+    results                 TEXT,
+    status                  VARCHAR(40),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE schedule_adjustment_plans (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    planned_measure     VARCHAR(200),
-    reason              TEXT,
-    planned_period      VARCHAR(160),
-    expected_results    TEXT
+CREATE TABLE planned_schedule_adjustments (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    planned_measure         VARCHAR(120),
+    reason                  TEXT,
+    planned_period          VARCHAR(100),
+    expected_results        TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE schedule_adjustment_effect_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL UNIQUE REFERENCES schedule_adjustment_reports(id) ON DELETE CASCADE,
+    adjusted_teacher_count  SMALLINT NOT NULL DEFAULT 0 CHECK (adjusted_teacher_count BETWEEN 0 AND 9999),
+    released_research_hours INTEGER NOT NULL DEFAULT 0 CHECK (released_research_hours BETWEEN 0 AND 999999),
+    submitted_research_project_count SMALLINT NOT NULL DEFAULT 0 CHECK (submitted_research_project_count BETWEEN 0 AND 9999),
+    published_paper_count   SMALLINT NOT NULL DEFAULT 0 CHECK (published_paper_count BETWEEN 0 AND 9999),
+    q1_q2_paper_count       SMALLINT NOT NULL DEFAULT 0 CHECK (q1_q2_paper_count BETWEEN 0 AND 9999),
+    average_productivity_increase_percent NUMERIC(3,2) CHECK (
+        average_productivity_increase_percent IS NULL
+        OR average_productivity_increase_percent BETWEEN 0 AND 999.99
+    ),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 13. SCIENTIFIC PRODUCTIVITY DURING SABBATICAL LEAVE
+-- 13. SLOBODNA STUDIJSKA GODINA
 
 CREATE TABLE sabbatical_reports (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    monitoring_period   VARCHAR(160),
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    monitoring_period       VARCHAR(100),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE sabbatical_users (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    usage_period        VARCHAR(160),
-    q1_paper_count      INTEGER NOT NULL DEFAULT 0 CHECK (q1_paper_count >= 0),
-    q2_paper_count      INTEGER NOT NULL DEFAULT 0 CHECK (q2_paper_count >= 0),
-    other_paper_count   INTEGER NOT NULL DEFAULT 0 CHECK (other_paper_count >= 0),
-    monograph_count     INTEGER NOT NULL DEFAULT 0 CHECK (monograph_count >= 0),
-    user_status         VARCHAR(80),
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    usage_period            VARCHAR(100),
+    q1_paper_count          SMALLINT NOT NULL DEFAULT 0 CHECK (q1_paper_count BETWEEN 0 AND 999),
+    q2_paper_count          SMALLINT NOT NULL DEFAULT 0 CHECK (q2_paper_count BETWEEN 0 AND 999),
+    other_paper_count       SMALLINT NOT NULL DEFAULT 0 CHECK (other_paper_count BETWEEN 0 AND 999),
+    monograph_count         SMALLINT NOT NULL DEFAULT 0 CHECK (monograph_count BETWEEN 0 AND 999),
+    total_paper_count       SMALLINT NOT NULL DEFAULT 0 CHECK (total_paper_count BETWEEN 0 AND 999),
+    status                  VARCHAR(40),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE sabbatical_publications (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
-    sabbatical_user_id  BIGINT REFERENCES sabbatical_users(id) ON DELETE SET NULL,
-    authors             TEXT NOT NULL,
-    title               TEXT NOT NULL,
-    journal             VARCHAR(500),
-    quartile            VARCHAR(2) CHECK (quartile IN ('Q1', 'Q2')),
-    publication_year    SMALLINT,
-    doi_or_url          TEXT,
-    notes               TEXT
+CREATE TABLE sabbatical_q1_q2_papers (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
+    authors                 TEXT NOT NULL,
+    paper_title             TEXT NOT NULL,
+    journal                 VARCHAR(200),
+    quartile                VARCHAR(2) CHECK (quartile IN ('Q1', 'Q2')),
+    publication_year        SMALLINT CHECK (
+        publication_year IS NULL OR publication_year BETWEEN 2000
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    doi_or_link             TEXT,
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE sabbatical_monographs (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    report_id           BIGINT NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
-    sabbatical_user_id  BIGINT REFERENCES sabbatical_users(id) ON DELETE SET NULL,
-    authors             TEXT NOT NULL,
-    title               TEXT NOT NULL,
-    publisher           VARCHAR(180),
-    publication_year    SMALLINT,
-    isbn                VARCHAR(40),
-    page_count          INTEGER CHECK (page_count IS NULL OR page_count >= 0),
-    link_or_reviews     TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES sabbatical_reports(id) ON DELETE CASCADE,
+    authors                 TEXT NOT NULL,
+    monograph_title         TEXT NOT NULL,
+    publisher               VARCHAR(200),
+    publication_year        SMALLINT CHECK (
+        publication_year IS NULL OR publication_year BETWEEN 2000
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    isbn                    VARCHAR(17),
+    page_count              SMALLINT CHECK (page_count IS NULL OR page_count BETWEEN 1 AND 9999),
+    link_or_reviews         TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE VIEW v_sabbatical_summary AS
+SELECT
+    r.id AS report_id,
+    COUNT(DISTINCT u.id) AS sabbatical_user_count,
+    COUNT(DISTINCT u.id) FILTER (WHERE u.q1_paper_count + u.q2_paper_count > 0) AS users_with_q1_q2,
+    ROUND(
+        100.0 * COUNT(DISTINCT u.id) FILTER (WHERE u.q1_paper_count + u.q2_paper_count > 0)
+        / NULLIF(COUNT(DISTINCT u.id), 0),
+        2
+    ) AS success_percent,
+    COUNT(DISTINCT m.id) AS monograph_count
+FROM sabbatical_reports r
+LEFT JOIN sabbatical_users u ON u.report_id = r.id
+LEFT JOIN sabbatical_monographs m ON m.report_id = r.id
+GROUP BY r.id;
 
--- 14. JOINT EVENTS
+-- 14. ZAJEDNIČKA DOGAĐANJA
 
-CREATE TABLE joint_events (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    name                VARCHAR(500) NOT NULL,
-    event_type          VARCHAR(160),
-    event_phase         record_phase NOT NULL DEFAULT 'PLANNED',
-    event_date          DATE,
-    planned_date        DATE,
-    location            VARCHAR(160),
-    unipu_organizers    TEXT,
-    partner_organizations TEXT,
-    partner_country_id  BIGINT REFERENCES countries(id) ON DELETE SET NULL,
-    participant_count   INTEGER CHECK (participant_count IS NULL OR participant_count >= 0),
-    expected_participant_count INTEGER CHECK (expected_participant_count IS NULL OR expected_participant_count >= 0),
-    presentation_count  INTEGER CHECK (presentation_count IS NULL OR presentation_count >= 0),
-    thematic_field      VARCHAR(160),
-    program_report_url  TEXT,
-    media_coverage      TEXT,
-    cost_eur            NUMERIC(14,2) CHECK (cost_eur IS NULL OR cost_eur >= 0),
-    estimated_cost_eur  NUMERIC(14,2) CHECK (estimated_cost_eur IS NULL OR estimated_cost_eur >= 0),
-    funding_source      VARCHAR(160),
-    responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    preparation_status  VARCHAR(80),
-    notes               TEXT
+CREATE TABLE held_joint_events (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    event_name              VARCHAR(250) NOT NULL,
+    event_type              VARCHAR(100),
+    event_date              DATE,
+    location                VARCHAR(150),
+    unipu_organizers        TEXT,
+    partner_organizations   TEXT,
+    partner_country_id      INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    participant_count       SMALLINT CHECK (participant_count IS NULL OR participant_count BETWEEN 0 AND 9999),
+    presentation_count      SMALLINT CHECK (presentation_count IS NULL OR presentation_count BETWEEN 0 AND 9999),
+    thematic_field          VARCHAR(150),
+    program_report_link     TEXT,
+    media_coverage          TEXT,
+    cost_eur                NUMERIC(6,2) CHECK (cost_eur IS NULL OR cost_eur BETWEEN 0 AND 999999.99),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE planned_joint_events (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    event_name              VARCHAR(250) NOT NULL,
+    event_type              VARCHAR(100),
+    planned_date            DATE,
+    location                VARCHAR(150),
+    unipu_organizer         VARCHAR(200),
+    potential_partners      TEXT,
+    country_id              INTEGER REFERENCES countries(id) ON DELETE SET NULL,
+    expected_participant_count SMALLINT CHECK (
+        expected_participant_count IS NULL OR expected_participant_count BETWEEN 0 AND 9999
+    ),
+    thematic_field          VARCHAR(150),
+    preparation_status      VARCHAR(40),
+    estimated_cost_eur      NUMERIC(6,2) CHECK (
+        estimated_cost_eur IS NULL OR estimated_cost_eur BETWEEN 0 AND 999999.99
+    ),
+    funding_source          VARCHAR(150),
+    responsible_person      VARCHAR(120),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 15. PROJECT APPLICATIONS AND IMPLEMENTATION
+CREATE TABLE joint_event_type_analyses (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    event_type              VARCHAR(100) NOT NULL,
+    held_count              SMALLINT NOT NULL DEFAULT 0 CHECK (held_count BETWEEN 0 AND 9999),
+    planned_count           SMALLINT NOT NULL DEFAULT 0 CHECK (planned_count BETWEEN 0 AND 9999),
+    total_participants      INTEGER NOT NULL DEFAULT 0 CHECK (total_participants BETWEEN 0 AND 999999),
+    average_participants    NUMERIC(4,0) CHECK (
+        average_participants IS NULL OR average_participants BETWEEN 0 AND 9999
+    ),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 15. PROJEKTNE PRIJAVE I REALIZACIJA
 
 CREATE TABLE project_applications (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    project_name        VARCHAR(500) NOT NULL,
-    acronym             VARCHAR(80),
-    funding_source      VARCHAR(160),
-    call_name           VARCHAR(500),
-    call_url            TEXT,
-    unipu_role          VARCHAR(160),
-    involved_units      TEXT,
-    partner_institutions TEXT,
-    total_budget_eur    NUMERIC(16,2) CHECK (total_budget_eur IS NULL OR total_budget_eur >= 0),
-    unipu_share_eur     NUMERIC(16,2) CHECK (unipu_share_eur IS NULL OR unipu_share_eur >= 0),
-    implementation_start DATE,
-    implementation_end DATE,
-    duration_text       VARCHAR(160),
-    project_scope       VARCHAR(40) CHECK (project_scope IN ('DOMESTIC', 'INTERNATIONAL', 'OTHER')),
-    planned_activities  TEXT,
-    unipu_project_team  TEXT,
-    submission_deadline DATE,
-    application_status  VARCHAR(80),
-    contract_reference  VARCHAR(120),
-    project_code        VARCHAR(120),
-    notes               TEXT,
-    CHECK (implementation_end IS NULL OR implementation_start IS NULL OR implementation_end >= implementation_start)
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    proposal_name           VARCHAR(250) NOT NULL,
+    funding_source          VARCHAR(150),
+    call_name               VARCHAR(250),
+    call_link               TEXT,
+    unipu_role              VARCHAR(100),
+    involved_units          TEXT,
+    partner_institutions    TEXT,
+    total_project_amount_eur NUMERIC(6,2) CHECK (
+        total_project_amount_eur IS NULL OR total_project_amount_eur BETWEEN 0 AND 999999.99
+    ),
+    unipu_share_eur         NUMERIC(6,2) CHECK (
+        unipu_share_eur IS NULL OR unipu_share_eur BETWEEN 0 AND 999999.99
+    ),
+    implementation_duration VARCHAR(100),
+    project_type            VARCHAR(20) CHECK (
+        project_type IS NULL OR project_type IN ('DOMESTIC', 'INTERNATIONAL')
+    ),
+    planned_activities      TEXT,
+    unipu_project_team      TEXT,
+    submission_deadline     DATE,
+    application_status      VARCHAR(20) CHECK (
+        application_status IS NULL OR application_status IN ('APPROVED', 'REJECTED')
+    ),
+    contract_or_partnership_reference VARCHAR(150),
+    contract_project_code   VARCHAR(80),
+    notes                   TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-
--- 16. MEASURES FOLLOWING STUDENT SURVEYS
-
-CREATE TABLE survey_reason_catalog (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    code                VARCHAR(60) NOT NULL UNIQUE,
-    label               VARCHAR(500) NOT NULL,
-    description         TEXT,
-    sort_order          INTEGER NOT NULL DEFAULT 0,
-    is_active           BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE survey_measure_catalog (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    code                VARCHAR(60) NOT NULL UNIQUE,
-    label               VARCHAR(500) NOT NULL,
-    default_target      TEXT,
-    is_active           BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE survey_reason_measure_rules (
-    reason_id           BIGINT NOT NULL REFERENCES survey_reason_catalog(id) ON DELETE CASCADE,
-    measure_id          BIGINT NOT NULL REFERENCES survey_measure_catalog(id) ON DELETE CASCADE,
-    is_default          BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (reason_id, measure_id)
-);
+-- STUDENTSKE ANKETE
 
 CREATE TABLE survey_action_plans (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    course_name         VARCHAR(500),
-    observed_deficiency TEXT,
-    execution_report    TEXT,
-    target_value        TEXT,
-    due_date            DATE,
-    completed_on        DATE,
-    completion_status   VARCHAR(80),
-    notes               TEXT
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER REFERENCES reporting_periods(id) ON DELETE SET NULL,
+    staff_member_id         INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
+    inclusion_reasons       TEXT NOT NULL,
+    observed_deficiency     TEXT,
+    improvement_measures    TEXT,
+    executed_measures_report TEXT,
+    target_value            TEXT,
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE survey_action_plan_reasons (
-    action_plan_id      BIGINT NOT NULL REFERENCES survey_action_plans(id) ON DELETE CASCADE,
-    reason_id           BIGINT NOT NULL REFERENCES survey_reason_catalog(id) ON DELETE RESTRICT,
-    details             TEXT,
-    PRIMARY KEY (action_plan_id, reason_id)
-);
-
-CREATE TABLE survey_action_plan_measures (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    action_plan_id      BIGINT NOT NULL REFERENCES survey_action_plans(id) ON DELETE CASCADE,
-    measure_id          BIGINT REFERENCES survey_measure_catalog(id) ON DELETE SET NULL,
-    custom_measure      TEXT,
-    target_value        TEXT,
-    due_date            DATE,
-    is_completed        BOOLEAN NOT NULL DEFAULT FALSE,
-    execution_report    TEXT,
-    completed_on        DATE,
-    CHECK (measure_id IS NOT NULL OR custom_measure IS NOT NULL)
-);
-
--- Seed reasons and suggested measures from the provided survey form.
-INSERT INTO survey_reason_catalog (code, label, sort_order) VALUES
-('AVG_BELOW_3', 'Prosječna ocjena nastavnika niža od 3,00', 1),
-('QUESTION_BELOW_3', 'Prosječna ocjena pojedinog pitanja niža od 3,00', 2),
-('ETHICS_CONCERN', 'Komentari ukazuju na moguće grubo kršenje etičkih normi', 3),
-('ENVELOPE_NOT_COLLECTED', 'Nastavnik nije preuzeo omotnicu za evaluaciju', 4),
-('RESPONSE_BELOW_33', 'Evaluaciji je pristupilo manje od 33% upisanih studenata', 5),
-('EVALUATION_NOT_CONDUCTED', 'Studentska evaluacija nije provedena', 6);
-
-INSERT INTO survey_measure_catalog (code, label, default_target) VALUES
-('INTERVIEW', 'Razgovor s nastavnikom', 'Razgovor je proveden i evidentiran.'),
-('SELF_EVALUATION', 'Obveza samovrednovanja nastavnika', 'Nastavnik je predao samovrednovanje u zadanom roku.'),
-('PROFESSIONAL_TRAINING', 'Stručno osposobljavanje i usavršavanje', 'Nastavnik je završio dogovoreno stručno usavršavanje.'),
-('CHANGE_COURSE_HOLDER', 'Određivanje sunositelja ili drugog nositelja kolegija', 'Kolegij ima određenog odgovarajućeg nositelja ili sunositelja.'),
-('TEACHING_OBSERVATION', 'Hospitiranje kod uspješno ocijenjenog nastavnika', 'Hospitiranje je provedeno i dokumentirano.'),
-('PEER_REVIEW', 'Suradnička procjena nastave', 'Suradnička procjena je provedena i preporuke su evidentirane.'),
-('WRITTEN_EXPLANATION', 'Pisano obrazloženje nastavnika', 'Pisano obrazloženje je dostavljeno u zadanom roku.');
-
-INSERT INTO survey_reason_measure_rules (reason_id, measure_id)
-SELECT r.id, m.id
-FROM survey_reason_catalog r
-JOIN survey_measure_catalog m ON m.code IN ('INTERVIEW', 'SELF_EVALUATION', 'PROFESSIONAL_TRAINING', 'CHANGE_COURSE_HOLDER', 'TEACHING_OBSERVATION', 'PEER_REVIEW')
-WHERE r.code IN ('AVG_BELOW_3', 'QUESTION_BELOW_3', 'ETHICS_CONCERN');
-
-INSERT INTO survey_reason_measure_rules (reason_id, measure_id)
-SELECT r.id, m.id
-FROM survey_reason_catalog r
-JOIN survey_measure_catalog m ON m.code IN ('INTERVIEW', 'WRITTEN_EXPLANATION')
-WHERE r.code IN ('ENVELOPE_NOT_COLLECTED', 'RESPONSE_BELOW_33', 'EVALUATION_NOT_CONDUCTED');
-
-
--- MAIN FACULTY REPORT (PRILOG - OBRAZAC)
+-- GLAVNO IZVJEŠĆE O RADU I POSLOVANJU FAKULTETA
 
 CREATE TABLE faculty_reports (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    document_id         BIGINT NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-    dean_staff_id       BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    academic_year       VARCHAR(20) NOT NULL,
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
+    organizational_unit_id  INTEGER NOT NULL REFERENCES organizational_units(id) ON DELETE RESTRICT,
+    dean_name               VARCHAR(120),
+    report_date             DATE,
     strategic_framework_text TEXT,
-    human_capital_text  TEXT,
+    human_capital_text      TEXT,
     community_networking_text TEXT,
-    entrepreneurship_text TEXT,
+    entrepreneurship_infrastructure_text TEXT,
     regional_development_text TEXT,
     international_visibility_text TEXT,
     research_integrity_text TEXT,
@@ -738,260 +1160,414 @@ CREATE TABLE faculty_reports (
     technology_education_text TEXT,
     study_program_development_text TEXT,
     student_experience_text TEXT,
-    submitted_to_senate_on DATE,
-    notes               TEXT
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (reporting_period_id, organizational_unit_id)
 );
 
 CREATE TABLE staff_elections (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    election_type       VARCHAR(80),
-    job_title           VARCHAR(160),
-    election_date       DATE
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    staff_name          VARCHAR(120) NOT NULL,
+    election_type       VARCHAR(30),
+    job_position        VARCHAR(100),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE staff_employment_changes (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    change_type         VARCHAR(30) NOT NULL CHECK (change_type IN ('HIRED', 'RETIRED')),
-    academic_title      VARCHAR(160),
-    effective_date      DATE
+CREATE TABLE newly_employed_teachers (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    staff_name          VARCHAR(120) NOT NULL,
+    academic_title      VARCHAR(30),
+    employment_date     DATE,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE retired_teachers (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    staff_name          VARCHAR(120) NOT NULL,
+    academic_title      VARCHAR(30),
+    retirement_date     DATE,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE doctoral_assistants (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT NOT NULL REFERENCES staff_members(id) ON DELETE RESTRICT,
-    doctoral_program    VARCHAR(500),
-    provider            VARCHAR(160),
-    current_status      TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    assistant_name      VARCHAR(120) NOT NULL,
+    study_name_provider VARCHAR(250),
+    current_status      TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE faculty_committees (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    name                VARCHAR(160) NOT NULL,
-    members_text        TEXT,
-    mandate_start       DATE,
-    mandate_end         DATE,
-    report_url          TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    committee_name      VARCHAR(150) NOT NULL,
+    members             TEXT,
+    mandate             VARCHAR(100),
+    report_link         TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE faculty_council_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL UNIQUE REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    meetings_count      INTEGER CHECK (meetings_count IS NULL OR meetings_count >= 0),
-    meetings_with_students_count INTEGER CHECK (meetings_with_students_count IS NULL OR meetings_with_students_count >= 0),
-    minutes_urls        TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL UNIQUE REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    meeting_count       SMALLINT CHECK (meeting_count IS NULL OR meeting_count BETWEEN 0 AND 999),
+    meetings_with_students_count SMALLINT CHECK (
+        meetings_with_students_count IS NULL OR meetings_with_students_count BETWEEN 0 AND 999
+    ),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE alumni_organizations (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    name                VARCHAR(160) NOT NULL,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    alumni_name         VARCHAR(150) NOT NULL,
     founded_on          DATE,
-    current_member_count INTEGER CHECK (current_member_count IS NULL OR current_member_count >= 0),
-    previous_member_count INTEGER CHECK (previous_member_count IS NULL OR previous_member_count >= 0),
-    president_name      VARCHAR(150),
-    president_email     CITEXT,
-    annual_activity_count INTEGER CHECK (annual_activity_count IS NULL OR annual_activity_count >= 0)
+    current_member_count SMALLINT CHECK (current_member_count IS NULL OR current_member_count BETWEEN 0 AND 9999),
+    previous_member_count SMALLINT CHECK (previous_member_count IS NULL OR previous_member_count BETWEEN 0 AND 9999),
+    president_contact   VARCHAR(180),
+    annual_activity_count SMALLINT CHECK (annual_activity_count IS NULL OR annual_activity_count BETWEEN 0 AND 999),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE business_partners (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    organization_id     BIGINT REFERENCES organizations(id) ON DELETE SET NULL,
-    organization_name   VARCHAR(200) NOT NULL,
-    sector              VARCHAR(160),
-    cooperation_type    VARCHAR(120),
-    partner_status      VARCHAR(80),
-    agreement_year      SMALLINT,
-    annual_results      TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    institution_name    VARCHAR(200) NOT NULL,
+    sector              VARCHAR(100),
+    cooperation_type    VARCHAR(150),
+    status              VARCHAR(30),
+    agreement_year      SMALLINT CHECK (
+        agreement_year IS NULL OR agreement_year BETWEEN 1950
+        AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
+    ),
+    annual_results      TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE funded_projects (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    project_name        VARCHAR(500) NOT NULL,
-    acronym             VARCHAR(80),
-    funding_program     VARCHAR(160),
-    amount_eur          NUMERIC(16,2),
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    project_name        VARCHAR(250) NOT NULL,
+    acronym             VARCHAR(30),
+    funding_program     VARCHAR(150),
+    amount_eur          NUMERIC(6,2) CHECK (
+        amount_eur IS NULL OR amount_eur BETWEEN 0 AND 999999.99
+    ),
     start_date          DATE,
     end_date            DATE,
-    leader_staff_id     BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    leader_name         VARCHAR(150)
+    project_leader      VARCHAR(120),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
 );
 
-CREATE TABLE postgraduate_program_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    program_type        VARCHAR(30) NOT NULL CHECK (program_type IN ('DOCTORAL', 'SPECIALIST')),
-    program_name        VARCHAR(500),
-    enrollment_year_label VARCHAR(20) NOT NULL,
-    enrolled_count      INTEGER DEFAULT 0 CHECK (enrolled_count >= 0),
-    employed_outside_unipu_count INTEGER DEFAULT 0 CHECK (employed_outside_unipu_count >= 0),
-    active_status_count INTEGER DEFAULT 0 CHECK (active_status_count >= 0),
-    withdrawn_or_inactive_count INTEGER DEFAULT 0 CHECK (withdrawn_or_inactive_count >= 0),
-    graduated_count     INTEGER DEFAULT 0 CHECK (graduated_count >= 0),
-    mobility_count      INTEGER DEFAULT 0 CHECK (mobility_count >= 0)
+CREATE TABLE doctoral_generation_statistics (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    enrollment_year_label   VARCHAR(10) NOT NULL,
+    enrolled_count          SMALLINT NOT NULL DEFAULT 0 CHECK (enrolled_count BETWEEN 0 AND 9999),
+    employed_outside_unipu_count SMALLINT NOT NULL DEFAULT 0 CHECK (employed_outside_unipu_count BETWEEN 0 AND 9999),
+    active_status_count     SMALLINT NOT NULL DEFAULT 0 CHECK (active_status_count BETWEEN 0 AND 9999),
+    withdrawn_no_status_count SMALLINT NOT NULL DEFAULT 0 CHECK (withdrawn_no_status_count BETWEEN 0 AND 9999),
+    graduated_count         SMALLINT NOT NULL DEFAULT 0 CHECK (graduated_count BETWEEN 0 AND 9999),
+    mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE postgraduate_theses (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    thesis_type         VARCHAR(30) NOT NULL CHECK (thesis_type IN ('DOCTORAL', 'SPECIALIST')),
-    student_name        VARCHAR(150) NOT NULL,
-    thesis_title        TEXT NOT NULL,
+CREATE TABLE defended_doctoral_dissertations (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    doctoral_student_name VARCHAR(120) NOT NULL,
+    dissertation_title  TEXT,
     defense_date        DATE,
-    mentor_name         VARCHAR(150)
+    mentor_name         VARCHAR(120),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE doctoral_co_mentors (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    co_mentor_name      VARCHAR(150) NOT NULL,
-    home_institution_country VARCHAR(500),
-    thesis_and_student  TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    co_mentor_name      VARCHAR(120) NOT NULL,
+    home_unit_country   VARCHAR(250),
+    dissertation_and_student TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE external_doctoral_mentorships (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    staff_member_id     BIGINT REFERENCES staff_members(id) ON DELETE SET NULL,
-    teacher_name        VARCHAR(150),
-    doctoral_program_university VARCHAR(500),
-    thesis_and_student  TEXT,
-    appointed_on        DATE
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    teacher_name        VARCHAR(120) NOT NULL,
+    doctoral_study_university VARCHAR(250),
+    dissertation_and_student TEXT,
+    appointed_on        DATE,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE specialist_generation_statistics (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    enrollment_year_label   VARCHAR(10) NOT NULL,
+    enrolled_count          SMALLINT NOT NULL DEFAULT 0 CHECK (enrolled_count BETWEEN 0 AND 9999),
+    employed_outside_unipu_count SMALLINT NOT NULL DEFAULT 0 CHECK (employed_outside_unipu_count BETWEEN 0 AND 9999),
+    active_status_count     SMALLINT NOT NULL DEFAULT 0 CHECK (active_status_count BETWEEN 0 AND 9999),
+    withdrawn_no_status_count SMALLINT NOT NULL DEFAULT 0 CHECK (withdrawn_no_status_count BETWEEN 0 AND 9999),
+    graduated_count         SMALLINT NOT NULL DEFAULT 0 CHECK (graduated_count BETWEEN 0 AND 9999),
+    mobility_count          SMALLINT NOT NULL DEFAULT 0 CHECK (mobility_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE defended_specialist_works (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    student_name        VARCHAR(120) NOT NULL,
+    work_title          TEXT,
+    defense_date        DATE,
+    mentor_name         VARCHAR(120),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE digital_tool_usage (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    tool_type           VARCHAR(120) NOT NULL,
-    course_count        INTEGER DEFAULT 0 CHECK (course_count >= 0),
-    teacher_count       INTEGER DEFAULT 0 CHECK (teacher_count >= 0),
-    usage_description   TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    tool_type           VARCHAR(100) NOT NULL,
+    course_count        SMALLINT NOT NULL DEFAULT 0 CHECK (course_count BETWEEN 0 AND 9999),
+    teacher_count       SMALLINT NOT NULL DEFAULT 0 CHECK (teacher_count BETWEEN 0 AND 9999),
+    usage_type          TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE innovative_teaching_methods (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    method_name         VARCHAR(160) NOT NULL,
-    course_count        INTEGER DEFAULT 0 CHECK (course_count >= 0),
-    description         TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    method_type         VARCHAR(150) NOT NULL,
+    course_count        SMALLINT NOT NULL DEFAULT 0 CHECK (course_count BETWEEN 0 AND 9999),
+    teacher_count       SMALLINT NOT NULL DEFAULT 0 CHECK (teacher_count BETWEEN 0 AND 9999),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE study_program_enrollments (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    study_name          VARCHAR(500) NOT NULL,
-    study_level         VARCHAR(120),
-    attendance_type     VARCHAR(30) NOT NULL CHECK (attendance_type IN ('FULL_TIME', 'PART_TIME')),
-    study_year          SMALLINT NOT NULL CHECK (study_year BETWEEN 1 AND 10),
-    first_enrollment_count INTEGER DEFAULT 0 CHECK (first_enrollment_count >= 0),
-    repeat_enrollment_count INTEGER DEFAULT 0 CHECK (repeat_enrollment_count >= 0)
+CREATE TABLE full_time_study_enrollments (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    study_name              VARCHAR(200) NOT NULL,
+    study_year              SMALLINT NOT NULL CHECK (study_year BETWEEN 1 AND 4),
+    first_enrollment_count  SMALLINT NOT NULL DEFAULT 0 CHECK (first_enrollment_count BETWEEN 0 AND 9999),
+    repeat_enrollment_count SMALLINT NOT NULL DEFAULT 0 CHECK (repeat_enrollment_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE part_time_study_enrollments (
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    study_name              VARCHAR(200) NOT NULL,
+    study_year              SMALLINT NOT NULL CHECK (study_year BETWEEN 1 AND 4),
+    first_enrollment_count  SMALLINT NOT NULL DEFAULT 0 CHECK (first_enrollment_count BETWEEN 0 AND 9999),
+    repeat_enrollment_count SMALLINT NOT NULL DEFAULT 0 CHECK (repeat_enrollment_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE english_course_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    year_label          VARCHAR(20) NOT NULL,
-    course_count        INTEGER DEFAULT 0 CHECK (course_count >= 0)
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL UNIQUE REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    current_year_count  SMALLINT NOT NULL DEFAULT 0 CHECK (current_year_count BETWEEN 0 AND 9999),
+    previous_year_count SMALLINT NOT NULL DEFAULT 0 CHECK (previous_year_count BETWEEN 0 AND 9999),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE foreign_student_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    study_name          VARCHAR(500) NOT NULL,
-    year_label          VARCHAR(20) NOT NULL,
-    total_count         INTEGER DEFAULT 0 CHECK (total_count >= 0),
-    eu_count            INTEGER DEFAULT 0 CHECK (eu_count >= 0),
-    non_eu_count        INTEGER DEFAULT 0 CHECK (non_eu_count >= 0),
-    CHECK (eu_count + non_eu_count <= total_count)
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    study_name          VARCHAR(200) NOT NULL,
+    current_total       SMALLINT NOT NULL DEFAULT 0 CHECK (current_total BETWEEN 0 AND 9999),
+    current_eu          SMALLINT NOT NULL DEFAULT 0 CHECK (current_eu BETWEEN 0 AND 9999),
+    current_non_eu      SMALLINT NOT NULL DEFAULT 0 CHECK (current_non_eu BETWEEN 0 AND 9999),
+    previous_total      SMALLINT NOT NULL DEFAULT 0 CHECK (previous_total BETWEEN 0 AND 9999),
+    previous_eu         SMALLINT NOT NULL DEFAULT 0 CHECK (previous_eu BETWEEN 0 AND 9999),
+    previous_non_eu     SMALLINT NOT NULL DEFAULT 0 CHECK (previous_non_eu BETWEEN 0 AND 9999),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (current_eu + current_non_eu <= current_total),
+    CHECK (previous_eu + previous_non_eu <= previous_total)
 );
 
 CREATE TABLE commission_exams (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    student_name        VARCHAR(150) NOT NULL,
-    courses_text        TEXT,
-    committee_text      TEXT,
-    held_on             DATE
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    student_name        VARCHAR(120) NOT NULL,
+    courses             TEXT,
+    committee           TEXT,
+    held_on             DATE,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE external_teachers (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    teacher_name        VARCHAR(150) NOT NULL,
-    academic_title      VARCHAR(160),
-    courses_text        TEXT,
-    contact_hours       NUMERIC(10,2)
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    teacher_name        VARCHAR(120) NOT NULL,
+    academic_title      VARCHAR(30),
+    courses             TEXT,
+    contact_hours       SMALLINT CHECK (contact_hours IS NULL OR contact_hours BETWEEN 0 AND 999),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE lifelong_learning_programs (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    program_name        VARCHAR(500) NOT NULL,
-    current_participant_count INTEGER DEFAULT 0 CHECK (current_participant_count >= 0),
-    previous_participant_count INTEGER DEFAULT 0 CHECK (previous_participant_count >= 0)
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    program_name            VARCHAR(250) NOT NULL,
+    current_participant_count SMALLINT NOT NULL DEFAULT 0 CHECK (current_participant_count BETWEEN 0 AND 9999),
+    previous_participant_count SMALLINT NOT NULL DEFAULT 0 CHECK (previous_participant_count BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE student_mobility_statistics (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    mobility_direction  VARCHAR(20) NOT NULL CHECK (mobility_direction IN ('OUTGOING', 'INCOMING')),
-    program_group       VARCHAR(30) NOT NULL CHECK (program_group IN ('ERASMUS', 'OTHER')),
-    year_label          VARCHAR(20) NOT NULL,
-    student_count       INTEGER DEFAULT 0 CHECK (student_count >= 0)
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id       INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    mobility_direction      VARCHAR(10) NOT NULL CHECK (mobility_direction IN ('OUTGOING', 'INCOMING')),
+    current_erasmus         SMALLINT NOT NULL DEFAULT 0 CHECK (current_erasmus BETWEEN 0 AND 9999),
+    previous_erasmus        SMALLINT NOT NULL DEFAULT 0 CHECK (previous_erasmus BETWEEN 0 AND 9999),
+    current_other           SMALLINT NOT NULL DEFAULT 0 CHECK (current_other BETWEEN 0 AND 9999),
+    previous_other          SMALLINT NOT NULL DEFAULT 0 CHECK (previous_other BETWEEN 0 AND 9999),
+    created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE field_teaching_activities (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    course_name         VARCHAR(500) NOT NULL,
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    courses             TEXT,
     activity_date       DATE,
-    location_institution VARCHAR(500),
+    location_institution VARCHAR(250),
     activity_description TEXT,
-    learning_outcomes   TEXT
+    learning_outcomes   TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE student_competitions (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    event_name          VARCHAR(500) NOT NULL,
-    organizer_location  VARCHAR(500),
-    competition_type    VARCHAR(120),
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    competition_name    VARCHAR(250) NOT NULL,
+    organizer_location  VARCHAR(250),
+    competition_type    VARCHAR(80),
     event_date          DATE,
-    participants_text   TEXT,
-    result_award        TEXT
+    participants        TEXT,
+    result_award        TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE student_awards (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    student_name        VARCHAR(150) NOT NULL,
-    work_title          TEXT NOT NULL,
-    work_type           VARCHAR(160),
-    award_name          VARCHAR(500),
-    awarding_body       VARCHAR(500),
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    student_name        VARCHAR(120) NOT NULL,
+    work_title          TEXT,
+    work_type           VARCHAR(100),
+    award_name          VARCHAR(200),
+    awarding_body       VARCHAR(200),
     awarded_on          DATE,
-    mentor_name         VARCHAR(150)
+    mentor_name         VARCHAR(120),
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE extracurricular_activities (
-    id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    faculty_report_id   BIGINT NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
-    activity_name       VARCHAR(500) NOT NULL,
-    activity_type       VARCHAR(160),
-    students_text       TEXT,
-    organizer           VARCHAR(500),
-    description         TEXT
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    activity_name       VARCHAR(250) NOT NULL,
+    activity_type       VARCHAR(100),
+    students_and_year   TEXT,
+    organizer           VARCHAR(200),
+    short_description   TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-
--- AUTOMATIC updated_at TRIGGER
+-- AUTOMATSKO AŽURIRANJE updated_at
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -1001,61 +1577,210 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_users_updated_at
-BEFORE UPDATE ON users
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DO $$
+DECLARE
+    table_name TEXT;
+BEGIN
+    FOREACH table_name IN ARRAY ARRAY[
+        'organizational_units', 'users', 'staff_members', 'reporting_periods', 'organizations',
+        'membership_category_summaries', 'visiting_researcher_unit_analyses', 'stakeholder_analysis_summaries', 'staff_mobility_unit_analyses', 'staff_multiple_mobility_analyses', 'staff_mobility_country_analyses', 'international_cooperation_region_analyses', 'schedule_optimization_summaries', 'schedule_adjustment_effect_analyses', 'joint_event_type_analyses',
+        'new_memberships', 'active_memberships',
+        'professional_developments', 'professional_development_confirmations', 'professional_development_media',
+        'event_participations', 'event_organizer_confirmations', 'event_media',
+        'workshops', 'workshop_details', 'workshop_media', 'coauthorship_year_totals', 'coauthored_papers', 'coauthorship_category_summaries',
+        'realized_visiting_researchers', 'planned_visiting_researchers',
+        'stakeholder_analyses', 'science_stakeholders', 'artistic_stakeholders', 'professional_stakeholders',
+        'international_conferences', 'international_conference_details', 'conference_country_statistics',
+        'staff_mobilities', 'new_international_cooperations', 'active_international_agreements',
+        'schedule_optimization_reports', 'schedule_overload_cases', 'academic_promotion_cases',
+        'schedule_adjustment_reports', 'schedule_adjustment_measures',
+        'schedule_adjustment_beneficiaries', 'planned_schedule_adjustments',
+        'sabbatical_reports', 'sabbatical_users', 'sabbatical_q1_q2_papers', 'sabbatical_monographs',
+        'held_joint_events', 'planned_joint_events', 'project_applications', 'survey_action_plans',
+        'faculty_reports', 'staff_elections', 'newly_employed_teachers', 'retired_teachers',
+        'doctoral_assistants', 'faculty_committees', 'faculty_council_statistics',
+        'alumni_organizations', 'business_partners', 'funded_projects',
+        'doctoral_generation_statistics', 'defended_doctoral_dissertations',
+        'doctoral_co_mentors', 'external_doctoral_mentorships',
+        'specialist_generation_statistics', 'defended_specialist_works',
+        'digital_tool_usage', 'innovative_teaching_methods',
+        'full_time_study_enrollments', 'part_time_study_enrollments',
+        'english_course_statistics', 'foreign_student_statistics',
+        'commission_exams', 'external_teachers', 'lifelong_learning_programs',
+        'student_mobility_statistics', 'field_teaching_activities',
+        'student_competitions', 'student_awards', 'extracurricular_activities'
+    ]
+    LOOP
+        EXECUTE format(
+            'CREATE TRIGGER trg_%I_updated_at
+             BEFORE UPDATE ON %I
+             FOR EACH ROW EXECUTE FUNCTION set_updated_at()',
+            table_name, table_name
+        );
+    END LOOP;
+END $$;
 
-CREATE TRIGGER trg_staff_members_updated_at
-BEFORE UPDATE ON staff_members
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- INDEKSI ZA LISTE, FILTERE I POČETNU STRANICU
 
-CREATE TRIGGER trg_organizations_updated_at
-BEFORE UPDATE ON organizations
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE INDEX idx_staff_members_unit ON staff_members(organizational_unit_id);
+CREATE INDEX idx_organizations_country ON organizations(country_id);
 
-CREATE TRIGGER trg_documents_updated_at
-BEFORE UPDATE ON documents
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE INDEX idx_membership_summaries_period ON membership_category_summaries(reporting_period_id);
+CREATE INDEX idx_visiting_unit_analysis_period ON visiting_researcher_unit_analyses(reporting_period_id);
+CREATE INDEX idx_staff_mobility_unit_analysis_period ON staff_mobility_unit_analyses(reporting_period_id);
+CREATE INDEX idx_staff_multiple_mobility_period ON staff_multiple_mobility_analyses(reporting_period_id);
+CREATE INDEX idx_staff_mobility_country_analysis_period ON staff_mobility_country_analyses(reporting_period_id);
+CREATE INDEX idx_cooperation_region_analysis_period ON international_cooperation_region_analyses(reporting_period_id);
+CREATE INDEX idx_joint_event_type_analysis_period ON joint_event_type_analyses(reporting_period_id);
 
+CREATE INDEX idx_new_memberships_period ON new_memberships(reporting_period_id);
+CREATE INDEX idx_active_memberships_period ON active_memberships(reporting_period_id);
+CREATE INDEX idx_professional_developments_period ON professional_developments(reporting_period_id);
+CREATE INDEX idx_event_participations_period ON event_participations(reporting_period_id);
+CREATE INDEX idx_workshops_period ON workshops(reporting_period_id);
+CREATE INDEX idx_coauthorship_year_totals_period ON coauthorship_year_totals(reporting_period_id);
+CREATE INDEX idx_coauthored_papers_period ON coauthored_papers(reporting_period_id);
+CREATE INDEX idx_coauthorship_categories_period ON coauthorship_category_summaries(reporting_period_id);
+CREATE INDEX idx_realized_visitors_period ON realized_visiting_researchers(reporting_period_id);
+CREATE INDEX idx_planned_visitors_period ON planned_visiting_researchers(reporting_period_id);
+CREATE INDEX idx_conferences_period ON international_conferences(reporting_period_id);
+CREATE INDEX idx_staff_mobilities_period ON staff_mobilities(reporting_period_id);
+CREATE INDEX idx_new_cooperations_period ON new_international_cooperations(reporting_period_id);
+CREATE INDEX idx_active_agreements_period ON active_international_agreements(reporting_period_id);
+CREATE INDEX idx_held_joint_events_period ON held_joint_events(reporting_period_id);
+CREATE INDEX idx_planned_joint_events_period ON planned_joint_events(reporting_period_id);
+CREATE INDEX idx_project_applications_period ON project_applications(reporting_period_id);
+CREATE INDEX idx_faculty_reports_period ON faculty_reports(reporting_period_id);
 
--- VIEWS FOR THE PERSONALIZED HOMEPAGE AND DYNAMIC FILTERS
+CREATE INDEX idx_new_memberships_recent ON new_memberships(updated_by, updated_at DESC);
+CREATE INDEX idx_active_memberships_recent ON active_memberships(updated_by, updated_at DESC);
+CREATE INDEX idx_professional_developments_recent ON professional_developments(updated_by, updated_at DESC);
+CREATE INDEX idx_event_participations_recent ON event_participations(updated_by, updated_at DESC);
+CREATE INDEX idx_workshops_recent ON workshops(updated_by, updated_at DESC);
+CREATE INDEX idx_coauthored_papers_recent ON coauthored_papers(updated_by, updated_at DESC);
+CREATE INDEX idx_realized_visitors_recent ON realized_visiting_researchers(updated_by, updated_at DESC);
+CREATE INDEX idx_planned_visitors_recent ON planned_visiting_researchers(updated_by, updated_at DESC);
+CREATE INDEX idx_conferences_recent ON international_conferences(updated_by, updated_at DESC);
+CREATE INDEX idx_staff_mobilities_recent ON staff_mobilities(updated_by, updated_at DESC);
+CREATE INDEX idx_new_cooperations_recent ON new_international_cooperations(updated_by, updated_at DESC);
+CREATE INDEX idx_active_agreements_recent ON active_international_agreements(updated_by, updated_at DESC);
+CREATE INDEX idx_held_joint_events_recent ON held_joint_events(updated_by, updated_at DESC);
+CREATE INDEX idx_planned_joint_events_recent ON planned_joint_events(updated_by, updated_at DESC);
+CREATE INDEX idx_project_applications_recent ON project_applications(updated_by, updated_at DESC);
+CREATE INDEX idx_survey_action_plans_recent ON survey_action_plans(updated_by, updated_at DESC);
+CREATE INDEX idx_faculty_reports_recent ON faculty_reports(updated_by, updated_at DESC);
 
-CREATE VIEW v_user_recent_documents AS
+-- DINAMIČKI FILTERI
+
+CREATE VIEW v_membership_filter_options AS
 SELECT
-    d.id AS document_id,
-    d.owner_user_id,
-    d.module_code,
-    d.title,
-    d.status,
-    d.updated_at,
-    d.updated_by,
-    u.first_name || ' ' || u.last_name AS updated_by_name
-FROM documents d
-JOIN users u ON u.id = d.updated_by
-WHERE d.status <> 'ARCHIVED';
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT organization_kind ORDER BY organization_kind), NULL) AS organization_kinds,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT organization_level ORDER BY organization_level), NULL) AS organization_levels,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT membership_type ORDER BY membership_type), NULL) AS membership_types
+FROM (
+    SELECT organization_kind, organization_level, membership_type FROM new_memberships
+    UNION ALL
+    SELECT organization_kind, organization_level, membership_type FROM active_memberships
+) memberships;
 
-CREATE VIEW v_used_mobility_countries AS
-SELECT DISTINCT c.id, c.name_hr, c.name_en
-FROM staff_mobilities sm
-JOIN countries c ON c.id = sm.destination_country_id;
+CREATE VIEW v_professional_development_filter_options AS
+SELECT
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT development_type ORDER BY development_type), NULL) AS development_types,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT host_organization_name ORDER BY host_organization_name), NULL) AS host_organizations
+FROM professional_developments;
 
-CREATE VIEW v_used_organization_countries AS
-SELECT DISTINCT c.id, c.name_hr, c.name_en
-FROM organizations o
-JOIN countries c ON c.id = o.country_id;
+CREATE VIEW v_event_participation_filter_options AS
+SELECT
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT participation_type ORDER BY participation_type), NULL) AS participation_types,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT location ORDER BY location), NULL) AS locations
+FROM event_participations;
 
--- Indexes for lists and filters
-CREATE INDEX idx_memberships_country ON memberships(headquarters_country_id);
-CREATE INDEX idx_prof_dev_country ON professional_developments(country_id);
-CREATE INDEX idx_event_participations_date ON event_participations(event_date);
-CREATE INDEX idx_workshops_date ON workshops(held_on);
-CREATE INDEX idx_papers_year_category ON coauthored_papers(publication_year, paper_category);
-CREATE INDEX idx_visits_country_dates ON visiting_researcher_visits(country_id, arrival_date);
-CREATE INDEX idx_stakeholders_priority ON stakeholders(priority, stakeholder_status);
-CREATE INDEX idx_conferences_date ON international_conferences(held_on);
-CREATE INDEX idx_mobility_country_dates ON staff_mobilities(destination_country_id, start_date);
-CREATE INDEX idx_cooperations_country_status ON international_cooperations(country_id, cooperation_status);
-CREATE INDEX idx_joint_events_date_type ON joint_events(event_date, event_type);
-CREATE INDEX idx_projects_status_deadline ON project_applications(application_status, submission_deadline);
+CREATE VIEW v_workshop_filter_options AS
+SELECT
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT target_group ORDER BY target_group), NULL) AS target_groups,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT location ORDER BY location), NULL) AS locations
+FROM workshops;
+
+CREATE VIEW v_project_filter_options AS
+SELECT
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT funding_source ORDER BY funding_source), NULL) AS funding_sources,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT call_name ORDER BY call_name), NULL) AS calls,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT application_status ORDER BY application_status), NULL) AS application_statuses
+FROM project_applications;
+
+-- PERSONALIZIRANA POČETNA STRANICA
+
+CREATE VIEW v_recent_records AS
+SELECT id AS record_id, 'NEW_MEMBERSHIPS'::TEXT AS record_type,
+       'Nova članstva'::TEXT AS module_name, organization_name::TEXT AS record_title,
+       reporting_period_id, updated_by, updated_at
+FROM new_memberships
+UNION ALL
+SELECT id, 'ACTIVE_MEMBERSHIPS', 'Aktivna članstva', organization_name,
+       reporting_period_id, updated_by, updated_at
+FROM active_memberships
+UNION ALL
+SELECT id, 'PROFESSIONAL_DEVELOPMENTS', 'Stručna usavršavanja', program_name,
+       reporting_period_id, updated_by, updated_at
+FROM professional_developments
+UNION ALL
+SELECT id, 'EVENT_PARTICIPATIONS', 'Sudjelovanja na skupovima', event_name,
+       reporting_period_id, updated_by, updated_at
+FROM event_participations
+UNION ALL
+SELECT id, 'WORKSHOPS', 'Radionice', workshop_name,
+       reporting_period_id, updated_by, updated_at
+FROM workshops
+UNION ALL
+SELECT id, 'COAUTHORED_PAPERS', 'Koautorski radovi', authors_and_title,
+       reporting_period_id, updated_by, updated_at
+FROM coauthored_papers
+UNION ALL
+SELECT id, 'REALIZED_VISITING_RESEARCHERS', 'Realizirana gostovanja', researcher_name,
+       reporting_period_id, updated_by, updated_at
+FROM realized_visiting_researchers
+UNION ALL
+SELECT id, 'PLANNED_VISITING_RESEARCHERS', 'Planirana gostovanja', researcher_name,
+       reporting_period_id, updated_by, updated_at
+FROM planned_visiting_researchers
+UNION ALL
+SELECT id, 'INTERNATIONAL_CONFERENCES', 'Međunarodne konferencije', conference_name,
+       reporting_period_id, updated_by, updated_at
+FROM international_conferences
+UNION ALL
+SELECT id, 'STAFF_MOBILITIES', 'Mobilnost osoblja',
+       COALESCE(host_institution, mobility_purpose, 'Mobilnost osoblja'),
+       reporting_period_id, updated_by, updated_at
+FROM staff_mobilities
+UNION ALL
+SELECT id, 'NEW_INTERNATIONAL_COOPERATIONS', 'Nove međunarodne suradnje', partner_institution,
+       reporting_period_id, updated_by, updated_at
+FROM new_international_cooperations
+UNION ALL
+SELECT id, 'ACTIVE_INTERNATIONAL_AGREEMENTS', 'Aktivni međunarodni ugovori', partner_institution,
+       reporting_period_id, updated_by, updated_at
+FROM active_international_agreements
+UNION ALL
+SELECT id, 'HELD_JOINT_EVENTS', 'Održana zajednička događanja', event_name,
+       reporting_period_id, updated_by, updated_at
+FROM held_joint_events
+UNION ALL
+SELECT id, 'PLANNED_JOINT_EVENTS', 'Planirana zajednička događanja', event_name,
+       reporting_period_id, updated_by, updated_at
+FROM planned_joint_events
+UNION ALL
+SELECT id, 'PROJECT_APPLICATIONS', 'Projektne prijave', proposal_name,
+       reporting_period_id, updated_by, updated_at
+FROM project_applications
+UNION ALL
+SELECT id, 'SURVEY_ACTION_PLANS', 'Mjere nakon studentskih anketa',
+       ('Nastavnik #' || staff_member_id)::TEXT,
+       reporting_period_id, updated_by, updated_at
+FROM survey_action_plans
+UNION ALL
+SELECT id, 'FACULTY_REPORTS', 'Godišnje izvješće fakulteta',
+       ('Izvješće #' || id)::TEXT,
+       reporting_period_id, updated_by, updated_at
+FROM faculty_reports;
 
 COMMIT;
