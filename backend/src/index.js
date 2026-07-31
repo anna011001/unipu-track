@@ -3,9 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./db/pool.js";
 import organizationalUnitsRouter from "./routes/organizationalUnits.js";
+import reportingPeriodsRouter from "./routes/reportingPeriods.js";
+import countriesRouter from "./routes/countries.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
+// https://www.postman.com/anna011001-5136958/workspace/unipu-track
 
 dotenv.config();
 
@@ -16,6 +19,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/organizational-units", organizationalUnitsRouter);
+app.use("/api/reporting-periods", reportingPeriodsRouter);
+app.use("/api/countries", countriesRouter);
 
 app.use(notFound);
 app.use(errorHandler);
