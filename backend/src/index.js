@@ -9,6 +9,7 @@ import countriesRouter from "./routes/countries.js";
 import staffMembersRouter from "./routes/staffMembers.js";
 import usersRouter from "./routes/users.js";
 import membershipsRouter from "./routes/memberships.js";
+import professionalDevelopmentsRouter from "./routes/professionalDevelopments.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -29,6 +30,7 @@ app.use("/api/countries", countriesRouter);
 app.use("/api/staff-members", staffMembersRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/memberships", membershipsRouter);
+app.use("/api/professional-developments", professionalDevelopmentsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
