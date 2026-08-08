@@ -11,6 +11,7 @@ import usersRouter from "./routes/users.js";
 import membershipsRouter from "./routes/memberships.js";
 import professionalDevelopmentsRouter from "./routes/professionalDevelopments.js";
 import eventParticipationsRouter from "./routes/eventParticipations.js";
+import workshopsRouter from "./routes/workshops.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -33,6 +34,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/memberships", membershipsRouter);
 app.use("/api/professional-developments", professionalDevelopmentsRouter);
 app.use("/api/event-participations", eventParticipationsRouter);
+app.use("/api/workshops", workshopsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
