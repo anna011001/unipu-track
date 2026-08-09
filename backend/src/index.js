@@ -15,6 +15,7 @@ import workshopsRouter from "./routes/workshops.js";
 import coauthorshipsRouter from "./routes/coauthorships.js";
 import visitingResearchersRouter from "./routes/visitingResearchers.js";
 import stakeholdersRouter from "./routes/stakeholders.js";
+import internationalConferencesRouter from "./routes/internationalConferences.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -41,6 +42,7 @@ app.use("/api/workshops", workshopsRouter);
 app.use("/api/coauthorships", coauthorshipsRouter);
 app.use("/api/visiting-researchers", visitingResearchersRouter);
 app.use("/api/stakeholders", stakeholdersRouter);
+app.use("/api/international-conferences", internationalConferencesRouter);
 app.use(notFound);
 app.use(errorHandler);
 
