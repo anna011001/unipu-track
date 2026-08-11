@@ -18,6 +18,7 @@ import stakeholdersRouter from "./routes/stakeholders.js";
 import internationalConferencesRouter from "./routes/internationalConferences.js";
 import internationalCooperationsRouter from "./routes/internationalCooperations.js";
 import scheduleOptimizationsRouter from "./routes/scheduleOptimizations.js";
+import scheduleAdjustmentsRouter from "./routes/scheduleAdjustments.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -47,6 +48,7 @@ app.use("/api/stakeholders", stakeholdersRouter);
 app.use("/api/international-conferences", internationalConferencesRouter);
 app.use("/api/international-cooperations", internationalCooperationsRouter);
 app.use("/api/schedule-optimizations", scheduleOptimizationsRouter);
+app.use("/api/schedule-adjustments", scheduleAdjustmentsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
