@@ -21,6 +21,7 @@ import scheduleOptimizationsRouter from "./routes/scheduleOptimizations.js";
 import scheduleAdjustmentsRouter from "./routes/scheduleAdjustments.js";
 import sabbaticalsRouter from "./routes/sabbaticals.js";
 import jointEventsRouter from "./routes/jointEvents.js";
+import projectApplicationsRouter from "./routes/projectApplications.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -53,6 +54,7 @@ app.use("/api/schedule-optimizations", scheduleOptimizationsRouter);
 app.use("/api/schedule-adjustments", scheduleAdjustmentsRouter);
 app.use("/api/sabbaticals", sabbaticalsRouter);
 app.use("/api/joint-events", jointEventsRouter);
+app.use("/api/project-applications", projectApplicationsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
