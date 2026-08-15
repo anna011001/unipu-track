@@ -25,6 +25,7 @@ import projectApplicationsRouter from "./routes/projectApplications.js";
 import surveyActionPlansRouter from "./routes/surveyActionPlans.js";
 import facultyReportsRouter from "./routes/facultyReports.js";
 import recordFilesRouter from "./routes/recordFiles.js";
+import dashboardRouter from "./routes/dashboard.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -61,6 +62,7 @@ app.use("/api/project-applications", projectApplicationsRouter);
 app.use("/api/survey-action-plans", surveyActionPlansRouter);
 app.use("/api/faculty", facultyReportsRouter);
 app.use("/api/record-files", recordFilesRouter);
+app.use("/api/dashboard", dashboardRouter);
 app.use(notFound);
 app.use(errorHandler);
 
