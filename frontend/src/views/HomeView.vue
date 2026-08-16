@@ -26,7 +26,6 @@ const categories = [
 <template>
   <v-container class="home-view py-10 py-md-16">
     <section class="mb-10">
-      <p class="text-overline text-primary mb-2">UNIPU Track</p>
       <h1 class="text-h3 font-weight-bold mb-3">Praćenje aktivnosti fakulteta</h1>
       <p class="text-body-1 text-medium-emphasis intro-text">
         Odaberite kategoriju za pregled i upravljanje podacima.
