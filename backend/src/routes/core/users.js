@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import pool from "../db/pool.js";
-import { validateId } from "../middleware/validateId.js";
+import pool from "../../db/pool.js";
+import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
 
@@ -436,4 +436,3 @@ router.delete("/:id", validateId, async (req, res, next) => {
 });
 
 export default router;
-

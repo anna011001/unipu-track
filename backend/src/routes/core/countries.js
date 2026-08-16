@@ -1,6 +1,6 @@
 import express from "express";
-import pool from "../db/pool.js";
-import { validateId } from "../middleware/validateId.js";
+import pool from "../../db/pool.js";
+import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
 
