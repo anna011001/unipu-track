@@ -799,10 +799,11 @@ onMounted(loadMemberships)
 .summary-table th,
 .summary-table td {
   padding: 14px 18px;
-  border: 1px solid rgb(var(--v-theme-divider));
+  border: 1px solid rgb(var(--v-theme-table-border));
 }
 
 .summary-table th {
+  border-color: rgb(var(--v-theme-table-header-border));
   background: rgb(var(--v-theme-category-card));
   color: rgb(var(--v-theme-on-category-card));
 }
