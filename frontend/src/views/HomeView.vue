@@ -5,6 +5,7 @@ import api from '../services/api.js'
 const categories = [
   {
     title: 'Istraživanje i razvoj',
+    to: '/istrazivanje-i-razvoj',
   },
   {
     title: 'Međunarodna suradnja',
@@ -135,9 +136,14 @@ onMounted(loadRecentRecords)
       <h2>Kategorije obrazaca</h2>
 
       <div class="category-grid">
-        <article v-for="category in categories" :key="category.title" class="category-card">
-          {{ category.title }}
-        </article>
+        <template v-for="category in categories" :key="category.title">
+          <RouterLink v-if="category.to" class="category-card" :to="category.to">
+            {{ category.title }}
+          </RouterLink>
+          <article v-else class="category-card">
+            {{ category.title }}
+          </article>
+        </template>
       </div>
     </section>
   </div>
