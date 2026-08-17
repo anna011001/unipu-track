@@ -717,7 +717,7 @@ onMounted(loadMemberships)
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-membership-link));
   cursor: pointer;
   font: inherit;
   font-size: clamp(1rem, 1.05vw, 1.35rem);
