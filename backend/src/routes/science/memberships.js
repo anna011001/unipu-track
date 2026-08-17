@@ -1087,6 +1087,83 @@ router.delete("/active/:id", validateId, async (req, res, next) => {
 
 // SAŽECI ČLANSTAVA
 
+router.get("/summary", async (req, res, next) => {
+    try {
+        const result = await pool.query(`
+            WITH membership_counts AS (
+                SELECT
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level,
+                    COUNT(*)::int AS existing_memberships,
+                    0::int AS new_memberships
+                FROM active_memberships
+                GROUP BY
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level
+
+                UNION ALL
+
+                SELECT
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level,
+                    0::int AS existing_memberships,
+                    COUNT(*)::int AS new_memberships
+                FROM new_memberships
+                GROUP BY
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level
+            ),
+            grouped_memberships AS (
+                SELECT
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level,
+                    SUM(existing_memberships)::int AS existing_memberships,
+                    SUM(new_memberships)::int AS new_memberships,
+                    (
+                        SUM(existing_memberships) +
+                        SUM(new_memberships)
+                    )::int AS total_memberships
+                FROM membership_counts
+                GROUP BY
+                    reporting_period_id,
+                    organization_kind,
+                    organization_level
+            )
+            SELECT
+                reporting_period_id,
+                organization_kind,
+                organization_level,
+                existing_memberships,
+                new_memberships,
+                total_memberships,
+                ROUND(
+                    total_memberships * 100.0 /
+                    NULLIF(
+                        SUM(total_memberships) OVER (
+                            PARTITION BY reporting_period_id
+                        ),
+                        0
+                    ),
+                    2
+                ) AS share_percent
+            FROM grouped_memberships
+            ORDER BY
+                reporting_period_id,
+                organization_kind,
+                organization_level
+        `);
+
+        return res.status(200).json(result.rows);
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.get("/summaries", async (req, res, next) => {
     try {
         const result = await pool.query(`
