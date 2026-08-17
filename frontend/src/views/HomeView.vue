@@ -148,9 +148,11 @@ onMounted(loadRecentRecords)
   --home-text: rgb(var(--v-theme-on-background));
   --home-divider: rgb(var(--v-theme-divider));
   --home-record: rgb(var(--v-theme-record));
+  --home-record-hover: rgb(var(--v-theme-record-hover));
   --home-muted: rgb(var(--v-theme-muted));
   --home-error: rgb(var(--v-theme-error));
   --card-background: rgb(var(--v-theme-category-card));
+  --card-background-hover: rgb(var(--v-theme-category-card-hover));
   --card-border: rgb(var(--v-theme-category-border));
   --card-text: rgb(var(--v-theme-on-category-card));
   min-height: calc(100vh - 112px);
@@ -215,6 +217,12 @@ onMounted(loadRecentRecords)
 
 .record-name {
   color: var(--home-record);
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.record-name:hover {
+  color: var(--home-record-hover);
 }
 
 .table-message {
@@ -252,6 +260,12 @@ onMounted(loadRecentRecords)
   font-weight: 400;
   line-height: 1.6;
   text-align: center;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.category-card:hover {
+  background: var(--card-background-hover);
 }
 
 @media (max-width: 1100px) {

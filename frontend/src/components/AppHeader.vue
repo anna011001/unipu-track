@@ -87,8 +87,14 @@ onMounted(() => {
 
 .nav-link {
   color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
   font-size: clamp(1rem, 1.25vw, 2rem);
   font-weight: 700;
+  transition: color 160ms ease;
+}
+
+.nav-link:hover {
+  color: rgb(var(--v-theme-primary));
 }
 
 .theme-toggle {
