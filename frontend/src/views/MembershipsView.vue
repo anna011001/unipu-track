@@ -12,8 +12,11 @@ const staffMembers = ref([])
 const selectedPeriodId = ref(null)
 const selectedNewMembership = ref(null)
 const selectedActiveMembership = ref(null)
+const newMembershipsPage = ref(1)
+const activeMembershipsPage = ref(1)
 const loading = ref(true)
 const errorMessage = ref('')
+const membershipsPerPage = 10
 
 const organizationKindLabels = {
   SCIENTIFIC: 'Znanstvena',
@@ -38,6 +41,24 @@ const filteredActiveMemberships = computed(() =>
     (membership) => Number(membership.reporting_period_id) === Number(selectedPeriodId.value),
   ),
 )
+
+const newMembershipsPageCount = computed(() =>
+  Math.ceil(filteredNewMemberships.value.length / membershipsPerPage),
+)
+
+const activeMembershipsPageCount = computed(() =>
+  Math.ceil(filteredActiveMemberships.value.length / membershipsPerPage),
+)
+
+const paginatedNewMemberships = computed(() => {
+  const start = (newMembershipsPage.value - 1) * membershipsPerPage
+  return filteredNewMemberships.value.slice(start, start + membershipsPerPage)
+})
+
+const paginatedActiveMemberships = computed(() => {
+  const start = (activeMembershipsPage.value - 1) * membershipsPerPage
+  return filteredActiveMemberships.value.slice(start, start + membershipsPerPage)
+})
 
 const filteredSummaries = computed(() =>
   membershipSummaries.value.filter(
@@ -87,6 +108,32 @@ function getSummaryCategory(summary) {
   const level = getOrganizationLevel(summary.organization_level).toLowerCase()
 
   return `${kind} ${level} članstva`
+}
+
+function getPaginationItems(currentPage, pageCount) {
+  if (pageCount <= 6) {
+    return Array.from({ length: pageCount }, (_, index) => index + 1)
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, 'ellipsis-end', pageCount - 1, pageCount]
+  }
+
+  if (currentPage >= pageCount - 2) {
+    return [1, 2, 'ellipsis-start', pageCount - 2, pageCount - 1, pageCount]
+  }
+
+  return [1, 'ellipsis-start', currentPage - 1, currentPage, currentPage + 1, 'ellipsis-end', pageCount]
+}
+
+function changeNewMembershipsPage(page) {
+  newMembershipsPage.value = page
+  selectedNewMembership.value = null
+}
+
+function changeActiveMembershipsPage(page) {
+  activeMembershipsPage.value = page
+  selectedActiveMembership.value = null
 }
 
 function formatDate(value) {
@@ -195,6 +242,8 @@ async function loadMemberships() {
 watch(selectedPeriodId, () => {
   selectedNewMembership.value = null
   selectedActiveMembership.value = null
+  newMembershipsPage.value = 1
+  activeMembershipsPage.value = 1
 })
 
 onMounted(loadMemberships)
@@ -260,17 +309,43 @@ onMounted(loadMemberships)
         </div>
 
         <div v-if="filteredNewMemberships.length" class="records-layout">
-          <div class="membership-list">
-            <button
-              v-for="membership in filteredNewMemberships"
-              :key="membership.id"
-              class="membership-row name-only"
-              :class="{ selected: selectedNewMembership?.id === membership.id }"
-              type="button"
-              @click="selectedNewMembership = membership"
+          <div class="membership-list-column">
+            <div class="membership-list">
+              <button
+                v-for="membership in paginatedNewMemberships"
+                :key="membership.id"
+                class="membership-row name-only"
+                :class="{ selected: selectedNewMembership?.id === membership.id }"
+                type="button"
+                @click="selectedNewMembership = membership"
+              >
+                <span>{{ membership.organization_name }}</span>
+              </button>
+            </div>
+
+            <nav
+              v-if="newMembershipsPageCount > 1"
+              class="pagination"
+              aria-label="Stranice novih članstava"
             >
-              <span>{{ membership.organization_name }}</span>
-            </button>
+              <template
+                v-for="item in getPaginationItems(newMembershipsPage, newMembershipsPageCount)"
+                :key="item"
+              >
+                <span v-if="typeof item === 'string'" class="pagination-ellipsis">…</span>
+                <button
+                  v-else
+                  class="pagination-button"
+                  :class="{ active: item === newMembershipsPage }"
+                  type="button"
+                  :aria-current="item === newMembershipsPage ? 'page' : undefined"
+                  :aria-label="`Stranica ${item}`"
+                  @click="changeNewMembershipsPage(item)"
+                >
+                  {{ item }}
+                </button>
+              </template>
+            </nav>
           </div>
 
           <dl v-if="selectedNewMembership" class="details-card">
@@ -307,17 +382,43 @@ onMounted(loadMemberships)
         <h2>Aktivna članstva ({{ filteredActiveMemberships.length }})</h2>
 
         <div v-if="filteredActiveMemberships.length" class="records-layout">
-          <div class="membership-list">
-            <button
-              v-for="membership in filteredActiveMemberships"
-              :key="membership.id"
-              class="membership-row name-only"
-              :class="{ selected: selectedActiveMembership?.id === membership.id }"
-              type="button"
-              @click="selectedActiveMembership = membership"
+          <div class="membership-list-column">
+            <div class="membership-list">
+              <button
+                v-for="membership in paginatedActiveMemberships"
+                :key="membership.id"
+                class="membership-row name-only"
+                :class="{ selected: selectedActiveMembership?.id === membership.id }"
+                type="button"
+                @click="selectedActiveMembership = membership"
+              >
+                <span>{{ membership.organization_name }}</span>
+              </button>
+            </div>
+
+            <nav
+              v-if="activeMembershipsPageCount > 1"
+              class="pagination"
+              aria-label="Stranice aktivnih članstava"
             >
-              <span>{{ membership.organization_name }}</span>
-            </button>
+              <template
+                v-for="item in getPaginationItems(activeMembershipsPage, activeMembershipsPageCount)"
+                :key="item"
+              >
+                <span v-if="typeof item === 'string'" class="pagination-ellipsis">…</span>
+                <button
+                  v-else
+                  class="pagination-button"
+                  :class="{ active: item === activeMembershipsPage }"
+                  type="button"
+                  :aria-current="item === activeMembershipsPage ? 'page' : undefined"
+                  :aria-label="`Stranica ${item}`"
+                  @click="changeActiveMembershipsPage(item)"
+                >
+                  {{ item }}
+                </button>
+              </template>
+            </nav>
           </div>
 
           <dl v-if="selectedActiveMembership" class="details-card">
@@ -534,10 +635,6 @@ onMounted(loadMemberships)
   font-weight: 700;
 }
 
-.name-only {
-  grid-template-columns: 1fr;
-}
-
 .membership-section {
   margin-top: clamp(64px, 8vh, 110px);
 }
@@ -562,7 +659,53 @@ onMounted(loadMemberships)
 
 .membership-list {
   display: grid;
+  grid-template-rows: repeat(5, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: calc(100% + clamp(24px, 4vw, 64px));
+  column-gap: clamp(32px, 4vw, 64px);
   gap: 4px;
+}
+
+.membership-list-column {
+  min-width: 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 22px;
+}
+
+.pagination-button,
+.pagination-ellipsis {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: rgb(var(--v-theme-primary));
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.pagination-button {
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.pagination-button:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.pagination-button.active {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
 }
 
 .membership-row {
@@ -579,6 +722,10 @@ onMounted(loadMemberships)
   font: inherit;
   font-size: clamp(1rem, 1.05vw, 1.35rem);
   text-align: left;
+}
+
+.membership-row.name-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .membership-row:hover,
@@ -706,6 +853,14 @@ onMounted(loadMemberships)
   .details-card div {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .membership-list {
+    width: 100%;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: 1fr;
   }
 
   .period-field,
