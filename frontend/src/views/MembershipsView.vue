@@ -776,7 +776,7 @@ onMounted(loadMemberships)
 }
 
 .evidence-value {
-  color: rgb(var(--v-theme-record));
+  color: rgb(var(--v-theme-evidence-link));
 }
 
 .empty-message {
