@@ -786,6 +786,7 @@ onMounted(loadMemberships)
 
 .summary-table-wrapper {
   margin-top: 34px;
+  border-radius: 10px;
   overflow-x: auto;
 }
 
