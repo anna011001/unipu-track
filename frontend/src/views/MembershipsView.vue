@@ -1,11 +1,14 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '../services/api.js'
 
+const currentUserId = 1
+const currentYear = new Date().getFullYear()
 const reportingPeriods = ref([])
 const newMemberships = ref([])
 const activeMemberships = ref([])
 const membershipSummaries = ref([])
+const organizations = ref([])
 const countries = ref([])
 const organizationalUnits = ref([])
 const staffMembers = ref([])
@@ -17,6 +20,14 @@ const newMembershipsPage = ref(1)
 const activeMembershipsPage = ref(1)
 const loading = ref(true)
 const errorMessage = ref('')
+const newEditForm = ref(null)
+const activeEditForm = ref(null)
+const newEditError = ref('')
+const activeEditError = ref('')
+const savingNewMembership = ref(false)
+const savingActiveMembership = ref(false)
+const successMessage = ref('')
+let successMessageTimer = null
 const membershipsPerPage = 10
 
 const organizationKindLabels = {
@@ -70,6 +81,42 @@ const filteredSummaries = computed(() =>
 const selectedPeriod = computed(() =>
   reportingPeriods.value.find((period) => Number(period.id) === Number(selectedPeriodId.value)),
 )
+
+function optionalNumber(value) {
+  return value === '' || value === null || value === undefined ? null : Number(value)
+}
+
+function clearSuccessMessage() {
+  successMessage.value = ''
+
+  if (successMessageTimer) {
+    window.clearTimeout(successMessageTimer)
+    successMessageTimer = null
+  }
+}
+
+function showSuccessMessage(message) {
+  clearSuccessMessage()
+  successMessage.value = message
+  successMessageTimer = window.setTimeout(clearSuccessMessage, 4000)
+}
+
+function getApiError(error, fallback) {
+  const backendErrors = error.response?.data?.errors
+
+  return Array.isArray(backendErrors)
+    ? backendErrors.join(' ')
+    : error.response?.data?.message || fallback
+}
+
+function findOrganizationId(name) {
+  const normalizedName = name.trim().toLocaleLowerCase('hr')
+  const organization = organizations.value.find(
+    (entry) => entry.name.trim().toLocaleLowerCase('hr') === normalizedName,
+  )
+
+  return organization?.id ?? null
+}
 
 function findName(items, id, getLabel) {
   if (id === null || id === undefined) {
@@ -137,6 +184,157 @@ function changeActiveMembershipsPage(page) {
   selectedActiveMembership.value = null
 }
 
+function cancelNewEdit() {
+  newEditForm.value = null
+  newEditError.value = ''
+}
+
+function cancelActiveEdit() {
+  activeEditForm.value = null
+  activeEditError.value = ''
+}
+
+function selectNewMembership(membership) {
+  cancelNewEdit()
+  selectedNewMembership.value = membership
+}
+
+function selectActiveMembership(membership) {
+  cancelActiveEdit()
+  selectedActiveMembership.value = membership
+}
+
+function startNewEdit() {
+  cancelActiveEdit()
+  newEditError.value = ''
+  newEditForm.value = {
+    organization_name: selectedNewMembership.value.organization_name ?? '',
+    organization_kind: selectedNewMembership.value.organization_kind ?? '',
+    organization_level: selectedNewMembership.value.organization_level ?? '',
+    headquarters_country_id: selectedNewMembership.value.headquarters_country_id ?? '',
+    joined_on: getDateInputValue(selectedNewMembership.value.joined_on),
+    membership_type: selectedNewMembership.value.membership_type ?? '',
+    annual_fee_eur: selectedNewMembership.value.annual_fee_eur ?? '',
+    unipu_member_id: selectedNewMembership.value.unipu_member_id ?? '',
+    organizational_unit_id: selectedNewMembership.value.organizational_unit_id ?? '',
+    membership_benefits: selectedNewMembership.value.membership_benefits ?? '',
+    evidence_link: selectedNewMembership.value.evidence_link ?? '',
+    notes: selectedNewMembership.value.notes ?? '',
+  }
+}
+
+function startActiveEdit() {
+  cancelNewEdit()
+  activeEditError.value = ''
+  activeEditForm.value = {
+    organization_name: selectedActiveMembership.value.organization_name ?? '',
+    organization_kind: selectedActiveMembership.value.organization_kind ?? '',
+    organization_level: selectedActiveMembership.value.organization_level ?? '',
+    country_id: selectedActiveMembership.value.country_id ?? '',
+    joined_year: selectedActiveMembership.value.joined_year ?? '',
+    membership_type: selectedActiveMembership.value.membership_type ?? '',
+    annual_fee_eur: selectedActiveMembership.value.annual_fee_eur ?? '',
+    unipu_representative_id: selectedActiveMembership.value.unipu_representative_id ?? '',
+    organizational_unit_id: selectedActiveMembership.value.organizational_unit_id ?? '',
+    organization_activities: selectedActiveMembership.value.organization_activities ?? '',
+    membership_status: selectedActiveMembership.value.membership_status ?? '',
+    notes: selectedActiveMembership.value.notes ?? '',
+  }
+}
+
+async function refreshMembershipSummaries() {
+  try {
+    const response = await api.get('/api/memberships/summary')
+    membershipSummaries.value = Array.isArray(response.data) ? response.data : []
+  } catch {
+    // Uređeni zapis ostaje spremljen i ako ponovno učitavanje sažetka ne uspije.
+  }
+}
+
+async function saveNewMembership() {
+  newEditError.value = ''
+
+  if (!newEditForm.value.organization_name.trim()) {
+    newEditError.value = 'Naziv organizacije je obavezan.'
+    return
+  }
+
+  savingNewMembership.value = true
+
+  try {
+    const form = newEditForm.value
+    const response = await api.patch(`/api/memberships/new/${selectedNewMembership.value.id}`, {
+      organization_id: findOrganizationId(form.organization_name),
+      organization_name: form.organization_name.trim(),
+      organization_kind: form.organization_kind,
+      organization_level: form.organization_level,
+      headquarters_country_id: optionalNumber(form.headquarters_country_id),
+      joined_on: form.joined_on || null,
+      membership_type: form.membership_type.trim() || null,
+      annual_fee_eur: optionalNumber(form.annual_fee_eur),
+      unipu_member_id: optionalNumber(form.unipu_member_id),
+      organizational_unit_id: optionalNumber(form.organizational_unit_id),
+      membership_benefits: form.membership_benefits.trim() || null,
+      evidence_link: form.evidence_link.trim() || null,
+      notes: form.notes.trim() || null,
+      updated_by: currentUserId,
+    })
+
+    const index = newMemberships.value.findIndex((membership) => membership.id === response.data.id)
+    if (index !== -1) newMemberships.value[index] = response.data
+    selectedNewMembership.value = response.data
+    newEditForm.value = null
+    showSuccessMessage('Novo članstvo uspješno je izmijenjeno.')
+    await refreshMembershipSummaries()
+  } catch (error) {
+    newEditError.value = getApiError(error, 'Novo članstvo nije moguće izmijeniti.')
+  } finally {
+    savingNewMembership.value = false
+  }
+}
+
+async function saveActiveMembership() {
+  activeEditError.value = ''
+
+  if (!activeEditForm.value.organization_name.trim()) {
+    activeEditError.value = 'Naziv organizacije je obavezan.'
+    return
+  }
+
+  savingActiveMembership.value = true
+
+  try {
+    const form = activeEditForm.value
+    const response = await api.patch(`/api/memberships/active/${selectedActiveMembership.value.id}`, {
+      organization_id: findOrganizationId(form.organization_name),
+      organization_name: form.organization_name.trim(),
+      organization_kind: form.organization_kind,
+      organization_level: form.organization_level,
+      country_id: optionalNumber(form.country_id),
+      joined_year: optionalNumber(form.joined_year),
+      membership_type: form.membership_type.trim() || null,
+      annual_fee_eur: optionalNumber(form.annual_fee_eur),
+      unipu_representative_id: optionalNumber(form.unipu_representative_id),
+      organizational_unit_id: optionalNumber(form.organizational_unit_id),
+      organization_activities: form.organization_activities.trim() || null,
+      membership_status: form.membership_status.trim() || null,
+      notes: form.notes.trim() || null,
+      updated_by: currentUserId,
+    })
+
+    const index = activeMemberships.value.findIndex((membership) => membership.id === response.data.id)
+    if (index !== -1) activeMemberships.value[index] = response.data
+    selectedActiveMembership.value = response.data
+    activeEditForm.value = null
+    showSuccessMessage('Aktivno članstvo uspješno je izmijenjeno.')
+    await refreshMembershipSummaries()
+  } catch (error) {
+    activeEditError.value = getApiError(error, 'Aktivno članstvo nije moguće izmijeniti.')
+  } finally {
+    savingActiveMembership.value = false
+  }
+}
+
 function formatDate(value) {
   if (!value) {
     return '—'
@@ -159,6 +357,24 @@ function formatFee(value) {
 
 function displayValue(value) {
   return value === null || value === undefined || value === '' ? '—' : value
+}
+
+function getDateInputValue(value) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10)
+  }
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
 function getEvidenceUrl(value) {
@@ -235,6 +451,7 @@ async function loadMemberships() {
       newResponse,
       activeResponse,
       summariesResponse,
+      organizationsResponse,
       countriesResponse,
       unitsResponse,
       staffResponse,
@@ -245,6 +462,7 @@ async function loadMemberships() {
         api.get('/api/memberships/new'),
         api.get('/api/memberships/active'),
         api.get('/api/memberships/summary'),
+        api.get('/api/organizations'),
         api.get('/api/countries'),
         api.get('/api/organizational-units'),
         api.get('/api/staff-members'),
@@ -255,6 +473,7 @@ async function loadMemberships() {
     newMemberships.value = Array.isArray(newResponse.data) ? newResponse.data : []
     activeMemberships.value = Array.isArray(activeResponse.data) ? activeResponse.data : []
     membershipSummaries.value = Array.isArray(summariesResponse.data) ? summariesResponse.data : []
+    organizations.value = Array.isArray(organizationsResponse.data) ? organizationsResponse.data : []
     countries.value = Array.isArray(countriesResponse.data) ? countriesResponse.data : []
     organizationalUnits.value = Array.isArray(unitsResponse.data) ? unitsResponse.data : []
     staffMembers.value = Array.isArray(staffResponse.data) ? staffResponse.data : []
@@ -269,6 +488,8 @@ async function loadMemberships() {
 }
 
 watch(selectedPeriodId, () => {
+  cancelNewEdit()
+  cancelActiveEdit()
   selectedNewMembership.value = null
   selectedActiveMembership.value = null
   newMembershipsPage.value = 1
@@ -276,6 +497,7 @@ watch(selectedPeriodId, () => {
 })
 
 onMounted(loadMemberships)
+onUnmounted(clearSuccessMessage)
 </script>
 
 <template>
@@ -344,7 +566,7 @@ onMounted(loadMemberships)
                 class="membership-row name-only"
                 :class="{ selected: selectedNewMembership?.id === membership.id }"
                 type="button"
-                @click="selectedNewMembership = membership"
+                @click="selectNewMembership(membership)"
               >
                 <span>{{ membership.organization_name }}</span>
               </button>
@@ -378,30 +600,112 @@ onMounted(loadMemberships)
           <dl v-if="selectedNewMembership" class="details-card">
             <div class="details-actions">
               <button
+                v-if="!newEditForm"
                 class="action-button edit-button"
                 type="button"
-                disabled
-                title="Forma za uređivanje bit će napravljena u sljedećem koraku"
+                @click="startNewEdit"
               >
                 Uredi
               </button>
+              <template v-else>
+                <button
+                  class="action-button save-edit-button"
+                  type="button"
+                  :disabled="savingNewMembership"
+                  @click="saveNewMembership"
+                >
+                  {{ savingNewMembership ? 'Spremanje...' : 'Spremi' }}
+                </button>
+                <button
+                  class="action-button cancel-edit-button"
+                  type="button"
+                  :disabled="savingNewMembership"
+                  @click="cancelNewEdit"
+                >
+                  Odustani
+                </button>
+              </template>
             </div>
+            <p v-if="newEditError" class="edit-error" role="alert">{{ newEditError }}</p>
             <div><dt>Broj</dt><dd>{{ selectedNewMembership.id }}</dd></div>
-            <div><dt>Organizacija</dt><dd>{{ selectedNewMembership.organization_name }}</dd></div>
-            <div><dt>Vrsta organizacije</dt><dd>{{ getOrganizationKind(selectedNewMembership.organization_kind) }}</dd></div>
-            <div><dt>Razina</dt><dd>{{ getOrganizationLevel(selectedNewMembership.organization_level) }}</dd></div>
-            <div><dt>Država sjedišta</dt><dd>{{ getCountryName(selectedNewMembership.headquarters_country_id) }}</dd></div>
-            <div><dt>Datum učlanjenja</dt><dd>{{ formatDate(selectedNewMembership.joined_on) }}</dd></div>
-            <div><dt>Vrsta članstva</dt><dd>{{ displayValue(selectedNewMembership.membership_type) }}</dd></div>
-            <div><dt>Godišnja članarina</dt><dd>{{ formatFee(selectedNewMembership.annual_fee_eur) }}</dd></div>
-            <div><dt>Član Sveučilišta</dt><dd>{{ getStaffMemberName(selectedNewMembership.unipu_member_id) }}</dd></div>
-            <div><dt>Sastavnica</dt><dd>{{ getOrganizationalUnitName(selectedNewMembership.organizational_unit_id) }}</dd></div>
-            <div><dt>Koristi članstva</dt><dd>{{ displayValue(selectedNewMembership.membership_benefits) }}</dd></div>
+            <div>
+              <dt>Organizacija</dt>
+              <dd><input v-if="newEditForm" v-model="newEditForm.organization_name" class="detail-input" maxlength="200" /><template v-else>{{ selectedNewMembership.organization_name }}</template></dd>
+            </div>
+            <div>
+              <dt>Vrsta organizacije</dt>
+              <dd>
+                <select v-if="newEditForm" v-model="newEditForm.organization_kind" class="detail-input">
+                  <option value="SCIENTIFIC">Znanstvena</option>
+                  <option value="PROFESSIONAL">Stručna</option>
+                  <option value="ARTISTIC">Umjetnička</option>
+                </select>
+                <template v-else>{{ getOrganizationKind(selectedNewMembership.organization_kind) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Razina</dt>
+              <dd>
+                <select v-if="newEditForm" v-model="newEditForm.organization_level" class="detail-input">
+                  <option value="INTERNATIONAL">Međunarodna</option>
+                  <option value="NATIONAL">Nacionalna</option>
+                  <option value="REGIONAL">Regionalna</option>
+                </select>
+                <template v-else>{{ getOrganizationLevel(selectedNewMembership.organization_level) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Država sjedišta</dt>
+              <dd>
+                <select v-if="newEditForm" v-model="newEditForm.headquarters_country_id" class="detail-input">
+                  <option value="">—</option>
+                  <option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr }}</option>
+                </select>
+                <template v-else>{{ getCountryName(selectedNewMembership.headquarters_country_id) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Datum učlanjenja</dt>
+              <dd><input v-if="newEditForm" v-model="newEditForm.joined_on" class="detail-input" type="date" /><template v-else>{{ formatDate(selectedNewMembership.joined_on) }}</template></dd>
+            </div>
+            <div>
+              <dt>Vrsta članstva</dt>
+              <dd><input v-if="newEditForm" v-model="newEditForm.membership_type" class="detail-input" maxlength="40" /><template v-else>{{ displayValue(selectedNewMembership.membership_type) }}</template></dd>
+            </div>
+            <div>
+              <dt>Godišnja članarina</dt>
+              <dd><input v-if="newEditForm" v-model="newEditForm.annual_fee_eur" class="detail-input" type="number" min="0" max="999.99" step="0.01" /><template v-else>{{ formatFee(selectedNewMembership.annual_fee_eur) }}</template></dd>
+            </div>
+            <div>
+              <dt>Član Sveučilišta</dt>
+              <dd>
+                <select v-if="newEditForm" v-model="newEditForm.unipu_member_id" class="detail-input">
+                  <option value="">—</option>
+                  <option v-for="member in staffMembers" :key="member.id" :value="member.id">{{ member.first_name }} {{ member.last_name }}</option>
+                </select>
+                <template v-else>{{ getStaffMemberName(selectedNewMembership.unipu_member_id) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Sastavnica</dt>
+              <dd>
+                <select v-if="newEditForm" v-model="newEditForm.organizational_unit_id" class="detail-input">
+                  <option value="">—</option>
+                  <option v-for="unit in organizationalUnits" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option>
+                </select>
+                <template v-else>{{ getOrganizationalUnitName(selectedNewMembership.organizational_unit_id) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Koristi članstva</dt>
+              <dd><textarea v-if="newEditForm" v-model="newEditForm.membership_benefits" class="detail-input" rows="2"></textarea><template v-else>{{ displayValue(selectedNewMembership.membership_benefits) }}</template></dd>
+            </div>
             <div>
               <dt>Dokaz</dt>
               <dd class="evidence-value">
+                <input v-if="newEditForm" v-model="newEditForm.evidence_link" class="detail-input" />
                 <a
-                  v-if="getEvidenceUrl(selectedNewMembership.evidence_link)"
+                  v-else-if="getEvidenceUrl(selectedNewMembership.evidence_link)"
                   class="evidence-link"
                   :href="getEvidenceUrl(selectedNewMembership.evidence_link)"
                   target="_blank"
@@ -412,7 +716,10 @@ onMounted(loadMemberships)
                 <span v-else>{{ displayValue(selectedNewMembership.evidence_link) }}</span>
               </dd>
             </div>
-            <div><dt>Napomena</dt><dd>{{ displayValue(selectedNewMembership.notes) }}</dd></div>
+            <div>
+              <dt>Napomena</dt>
+              <dd><textarea v-if="newEditForm" v-model="newEditForm.notes" class="detail-input" rows="2"></textarea><template v-else>{{ displayValue(selectedNewMembership.notes) }}</template></dd>
+            </div>
           </dl>
         </div>
 
@@ -431,7 +738,7 @@ onMounted(loadMemberships)
                 class="membership-row name-only"
                 :class="{ selected: selectedActiveMembership?.id === membership.id }"
                 type="button"
-                @click="selectedActiveMembership = membership"
+                @click="selectActiveMembership(membership)"
               >
                 <span>{{ membership.organization_name }}</span>
               </button>
@@ -465,27 +772,61 @@ onMounted(loadMemberships)
           <dl v-if="selectedActiveMembership" class="details-card">
             <div class="details-actions">
               <button
+                v-if="!activeEditForm"
                 class="action-button edit-button"
                 type="button"
-                disabled
-                title="Forma za uređivanje bit će napravljena u sljedećem koraku"
+                @click="startActiveEdit"
               >
                 Uredi
               </button>
+              <template v-else>
+                <button
+                  class="action-button save-edit-button"
+                  type="button"
+                  :disabled="savingActiveMembership"
+                  @click="saveActiveMembership"
+                >
+                  {{ savingActiveMembership ? 'Spremanje...' : 'Spremi' }}
+                </button>
+                <button
+                  class="action-button cancel-edit-button"
+                  type="button"
+                  :disabled="savingActiveMembership"
+                  @click="cancelActiveEdit"
+                >
+                  Odustani
+                </button>
+              </template>
             </div>
+            <p v-if="activeEditError" class="edit-error" role="alert">{{ activeEditError }}</p>
             <div><dt>Broj</dt><dd>{{ selectedActiveMembership.id }}</dd></div>
-            <div><dt>Organizacija</dt><dd>{{ selectedActiveMembership.organization_name }}</dd></div>
-            <div><dt>Vrsta organizacije</dt><dd>{{ getOrganizationKind(selectedActiveMembership.organization_kind) }}</dd></div>
-            <div><dt>Razina</dt><dd>{{ getOrganizationLevel(selectedActiveMembership.organization_level) }}</dd></div>
-            <div><dt>Država</dt><dd>{{ getCountryName(selectedActiveMembership.country_id) }}</dd></div>
-            <div><dt>Godina učlanjenja</dt><dd>{{ displayValue(selectedActiveMembership.joined_year) }}</dd></div>
-            <div><dt>Vrsta članstva</dt><dd>{{ displayValue(selectedActiveMembership.membership_type) }}</dd></div>
-            <div><dt>Godišnja članarina</dt><dd>{{ formatFee(selectedActiveMembership.annual_fee_eur) }}</dd></div>
-            <div><dt>Predstavnik Sveučilišta</dt><dd>{{ getStaffMemberName(selectedActiveMembership.unipu_representative_id) }}</dd></div>
-            <div><dt>Sastavnica</dt><dd>{{ getOrganizationalUnitName(selectedActiveMembership.organizational_unit_id) }}</dd></div>
-            <div><dt>Aktivnosti organizacije</dt><dd>{{ displayValue(selectedActiveMembership.organization_activities) }}</dd></div>
-            <div><dt>Status članstva</dt><dd>{{ displayValue(selectedActiveMembership.membership_status) }}</dd></div>
-            <div><dt>Napomena</dt><dd>{{ displayValue(selectedActiveMembership.notes) }}</dd></div>
+            <div><dt>Organizacija</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.organization_name" class="detail-input" maxlength="200" /><template v-else>{{ selectedActiveMembership.organization_name }}</template></dd></div>
+            <div>
+              <dt>Vrsta organizacije</dt>
+              <dd><select v-if="activeEditForm" v-model="activeEditForm.organization_kind" class="detail-input"><option value="SCIENTIFIC">Znanstvena</option><option value="PROFESSIONAL">Stručna</option><option value="ARTISTIC">Umjetnička</option></select><template v-else>{{ getOrganizationKind(selectedActiveMembership.organization_kind) }}</template></dd>
+            </div>
+            <div>
+              <dt>Razina</dt>
+              <dd><select v-if="activeEditForm" v-model="activeEditForm.organization_level" class="detail-input"><option value="INTERNATIONAL">Međunarodna</option><option value="NATIONAL">Nacionalna</option><option value="REGIONAL">Regionalna</option></select><template v-else>{{ getOrganizationLevel(selectedActiveMembership.organization_level) }}</template></dd>
+            </div>
+            <div>
+              <dt>Država</dt>
+              <dd><select v-if="activeEditForm" v-model="activeEditForm.country_id" class="detail-input"><option value="">—</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr }}</option></select><template v-else>{{ getCountryName(selectedActiveMembership.country_id) }}</template></dd>
+            </div>
+            <div><dt>Godina učlanjenja</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.joined_year" class="detail-input" type="number" min="1950" :max="currentYear" /><template v-else>{{ displayValue(selectedActiveMembership.joined_year) }}</template></dd></div>
+            <div><dt>Vrsta članstva</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.membership_type" class="detail-input" maxlength="40" /><template v-else>{{ displayValue(selectedActiveMembership.membership_type) }}</template></dd></div>
+            <div><dt>Godišnja članarina</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.annual_fee_eur" class="detail-input" type="number" min="0" max="999.99" step="0.01" /><template v-else>{{ formatFee(selectedActiveMembership.annual_fee_eur) }}</template></dd></div>
+            <div>
+              <dt>Predstavnik Sveučilišta</dt>
+              <dd><select v-if="activeEditForm" v-model="activeEditForm.unipu_representative_id" class="detail-input"><option value="">—</option><option v-for="member in staffMembers" :key="member.id" :value="member.id">{{ member.first_name }} {{ member.last_name }}</option></select><template v-else>{{ getStaffMemberName(selectedActiveMembership.unipu_representative_id) }}</template></dd>
+            </div>
+            <div>
+              <dt>Sastavnica</dt>
+              <dd><select v-if="activeEditForm" v-model="activeEditForm.organizational_unit_id" class="detail-input"><option value="">—</option><option v-for="unit in organizationalUnits" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select><template v-else>{{ getOrganizationalUnitName(selectedActiveMembership.organizational_unit_id) }}</template></dd>
+            </div>
+            <div><dt>Aktivnosti organizacije</dt><dd><textarea v-if="activeEditForm" v-model="activeEditForm.organization_activities" class="detail-input" rows="2"></textarea><template v-else>{{ displayValue(selectedActiveMembership.organization_activities) }}</template></dd></div>
+            <div><dt>Status članstva</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.membership_status" class="detail-input" maxlength="20" /><template v-else>{{ displayValue(selectedActiveMembership.membership_status) }}</template></dd></div>
+            <div><dt>Napomena</dt><dd><textarea v-if="activeEditForm" v-model="activeEditForm.notes" class="detail-input" rows="2"></textarea><template v-else>{{ displayValue(selectedActiveMembership.notes) }}</template></dd></div>
           </dl>
         </div>
 
@@ -524,6 +865,12 @@ onMounted(loadMemberships)
         <p v-else class="empty-message">Nema sažetaka za odabrano razdoblje.</p>
       </section>
     </template>
+
+    <Transition name="snackbar">
+      <div v-if="successMessage" class="success-snackbar" role="status" aria-live="polite">
+        {{ successMessage }}
+      </div>
+    </Transition>
   </main>
 </template>
 
@@ -824,6 +1171,37 @@ onMounted(loadMemberships)
   overflow-wrap: anywhere;
 }
 
+.detail-input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid rgb(var(--v-theme-on-category-card));
+  border-radius: 6px;
+  outline: none;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font: inherit;
+}
+
+textarea.detail-input {
+  resize: vertical;
+}
+
+.detail-input:focus {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-on-category-card), 0.18);
+}
+
+.details-card .edit-error {
+  margin: 0 0 8px;
+  color: rgb(var(--v-theme-error));
+}
+
+.details-actions .save-edit-button,
+.details-actions .cancel-edit-button {
+  min-width: 92px;
+  border-color: rgb(var(--v-theme-on-surface));
+}
+
 .evidence-value {
   color: rgb(var(--v-theme-evidence-link));
 }
@@ -838,6 +1216,31 @@ onMounted(loadMemberships)
 .evidence-link:hover {
   opacity: 0.72;
   text-decoration: underline;
+}
+
+.success-snackbar {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 1000;
+  min-width: min(360px, calc(100vw - 40px));
+  padding: 14px 18px;
+  border: 1px solid #62a957;
+  border-radius: 7px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2);
+  background: #b8f5ae;
+  color: #1f5525;
+}
+
+.snackbar-enter-active,
+.snackbar-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.snackbar-enter-from,
+.snackbar-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .empty-message {
@@ -929,6 +1332,11 @@ onMounted(loadMemberships)
   .period-field,
   .period-field select {
     width: 100%;
+  }
+
+  .success-snackbar {
+    right: 20px;
+    bottom: 20px;
   }
 }
 
