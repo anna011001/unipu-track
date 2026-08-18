@@ -24,6 +24,26 @@ const errorMessage = ref('')
 
 const recentRecords = computed(() => records.value.slice(0, 3))
 
+function getRecordRoute(record) {
+  const membershipTypes = {
+    NEW_MEMBERSHIPS: 'new',
+    ACTIVE_MEMBERSHIPS: 'active',
+  }
+  const type = membershipTypes[record.record_type]
+
+  if (!type) {
+    return null
+  }
+
+  return {
+    name: 'memberships',
+    query: {
+      type,
+      id: record.record_id,
+    },
+  }
+}
+
 function getCategory(recordType) {
   const type = recordType || ''
 
@@ -120,7 +140,16 @@ onMounted(loadRecentRecords)
           <tbody v-if="recentRecords.length">
             <tr v-for="record in recentRecords" :key="`${record.record_type}-${record.record_id}`">
               <td>{{ getCategory(record.record_type) }}</td>
-              <td class="record-name">{{ record.module_name }}</td>
+              <td>
+                <RouterLink
+                  v-if="getRecordRoute(record)"
+                  class="record-name"
+                  :to="getRecordRoute(record)"
+                >
+                  {{ record.module_name }}
+                </RouterLink>
+                <span v-else>{{ record.module_name }}</span>
+              </td>
               <td>{{ formatModified(record.updated_at) }}</td>
             </tr>
           </tbody>

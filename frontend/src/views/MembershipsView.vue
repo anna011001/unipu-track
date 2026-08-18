@@ -1,7 +1,9 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../services/api.js'
 
+const route = useRoute()
 const currentUserId = 1
 const currentYear = new Date().getFullYear()
 const reportingPeriods = ref([])
@@ -16,6 +18,8 @@ const recordFiles = ref([])
 const selectedPeriodId = ref(null)
 const selectedNewMembership = ref(null)
 const selectedActiveMembership = ref(null)
+const newDetailsCard = ref(null)
+const activeDetailsCard = ref(null)
 const newMembershipsPage = ref(1)
 const activeMembershipsPage = ref(1)
 const loading = ref(true)
@@ -441,6 +445,40 @@ function printPage() {
   window.print()
 }
 
+async function openRecordFromRoute() {
+  const recordId = Number(route.query.id)
+  const recordType = route.query.type
+
+  if (!Number.isInteger(recordId) || recordId <= 0) {
+    return
+  }
+
+  const isNewMembership = recordType === 'new'
+  const records = isNewMembership ? newMemberships.value : activeMemberships.value
+  const record = records.find((membership) => Number(membership.id) === recordId)
+
+  if (!record || (!isNewMembership && recordType !== 'active')) {
+    return
+  }
+
+  selectedPeriodId.value = record.reporting_period_id
+  await nextTick()
+
+  if (isNewMembership) {
+    const index = filteredNewMemberships.value.findIndex((membership) => membership.id === record.id)
+    newMembershipsPage.value = Math.floor(index / membershipsPerPage) + 1
+    selectedNewMembership.value = record
+  } else {
+    const index = filteredActiveMemberships.value.findIndex((membership) => membership.id === record.id)
+    activeMembershipsPage.value = Math.floor(index / membershipsPerPage) + 1
+    selectedActiveMembership.value = record
+  }
+
+  await nextTick()
+  const detailsCard = isNewMembership ? newDetailsCard.value : activeDetailsCard.value
+  detailsCard?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
 async function loadMemberships() {
   loading.value = true
   errorMessage.value = ''
@@ -479,6 +517,7 @@ async function loadMemberships() {
     staffMembers.value = Array.isArray(staffResponse.data) ? staffResponse.data : []
     recordFiles.value = Array.isArray(filesResponse.data) ? filesResponse.data : []
     selectedPeriodId.value = reportingPeriods.value[0]?.id ?? null
+    await openRecordFromRoute()
   } catch (error) {
     errorMessage.value =
       error.response?.data?.message || 'Nije moguće dohvatiti podatke o članstvima.'
@@ -597,7 +636,7 @@ onUnmounted(clearSuccessMessage)
             </nav>
           </div>
 
-          <dl v-if="selectedNewMembership" class="details-card">
+          <dl v-if="selectedNewMembership" ref="newDetailsCard" class="details-card">
             <div class="details-actions">
               <button
                 v-if="!newEditForm"
@@ -769,7 +808,7 @@ onUnmounted(clearSuccessMessage)
             </nav>
           </div>
 
-          <dl v-if="selectedActiveMembership" class="details-card">
+          <dl v-if="selectedActiveMembership" ref="activeDetailsCard" class="details-card">
             <div class="details-actions">
               <button
                 v-if="!activeEditForm"
