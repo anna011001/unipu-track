@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import MembershipsView from '../views/MembershipsView.vue'
+import NewMembershipView from '../views/NewMembershipView.vue'
 import ResearchDevelopmentView from '../views/ResearchDevelopmentView.vue'
 
 const router = createRouter({
@@ -20,6 +21,11 @@ const router = createRouter({
       path: '/istrazivanje-i-razvoj/clanstva',
       name: 'memberships',
       component: MembershipsView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/clanstva/novo',
+      name: 'new-membership',
+      component: NewMembershipView,
     },
     {
       path: '/:pathMatch(.*)*',

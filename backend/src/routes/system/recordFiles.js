@@ -1,8 +1,76 @@
 import express from "express";
+import { randomUUID } from "crypto";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import multer from "multer";
 import pool from "../../db/pool.js";
 import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
+const uploadsDirectory = fileURLToPath(
+    new URL("../../../uploads/", import.meta.url)
+);
+
+fs.mkdirSync(uploadsDirectory, { recursive: true });
+
+const allowedMimeTypes = new Set([
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png"
+]);
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: uploadsDirectory,
+        filename(req, file, callback) {
+            const extension = path.extname(file.originalname).toLowerCase();
+            callback(null, `${randomUUID()}${extension}`);
+        }
+    }),
+    limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 1
+    },
+    fileFilter(req, file, callback) {
+        if (!allowedMimeTypes.has(file.mimetype)) {
+            return callback(
+                new Error(
+                    "Dopuštene su PDF, Word, PNG i JPG datoteke."
+                )
+            );
+        }
+
+        callback(null, true);
+    }
+});
+
+function receiveFile(req, res, next) {
+    upload.single("file")(req, res, error => {
+        if (!error) {
+            return next();
+        }
+
+        const message = error instanceof multer.MulterError &&
+            error.code === "LIMIT_FILE_SIZE"
+            ? "Datoteka smije imati najviše 10 MB."
+            : error.message;
+
+        return res.status(400).json({ message });
+    });
+}
+
+async function removeUploadedFile(filePath) {
+    if (!filePath) return;
+
+    try {
+        await fs.promises.unlink(filePath);
+    } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+    }
+}
 
 function isPositiveInteger(value) {
     const number = Number(value);
@@ -237,6 +305,69 @@ router.get("/files", async (req, res, next) => {
     }
 });
 
+router.post("/files/upload", receiveFile, async (req, res, next) => {
+    if (!req.file) {
+        return res.status(400).json({
+            message: "Datoteka je obavezna."
+        });
+    }
+
+    const fileData = {
+        record_type: req.body.record_type,
+        record_id: req.body.record_id,
+        file_role: req.body.file_role || null,
+        file_name: req.file.originalname,
+        storage_path: `/uploads/${req.file.filename}`,
+        mime_type: req.file.mimetype,
+        file_size_bytes: req.file.size,
+        uploaded_by: req.body.uploaded_by
+    };
+    const errors = validateFile(fileData, "create");
+
+    if (errors.length > 0) {
+        await removeUploadedFile(req.file.path);
+
+        return res.status(400).json({
+            message: "Podaci nisu ispravni.",
+            errors
+        });
+    }
+
+    try {
+        const result = await pool.query(
+            `
+                INSERT INTO record_files (
+                    record_type,
+                    record_id,
+                    file_role,
+                    file_name,
+                    storage_path,
+                    mime_type,
+                    file_size_bytes,
+                    uploaded_by
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *
+            `,
+            [
+                fileData.record_type.trim(),
+                Number(fileData.record_id),
+                fileData.file_role?.trim() || null,
+                fileData.file_name.trim(),
+                fileData.storage_path,
+                fileData.mime_type,
+                Number(fileData.file_size_bytes),
+                Number(fileData.uploaded_by)
+            ]
+        );
+
+        return res.status(201).json(result.rows[0]);
+    } catch (error) {
+        await removeUploadedFile(req.file.path);
+        return handleDatabaseError(error, res, next);
+    }
+});
+
 router.get("/files/:id", validateId, async (req, res, next) => {
     try {
         const result = await pool.query(
@@ -468,13 +599,22 @@ router.delete("/files/:id", validateId, async (req, res, next) => {
             `
                 DELETE FROM record_files
                 WHERE id = $1
-                RETURNING id
+                RETURNING id, storage_path
             `,
             [req.resourceId]
         );
 
         if (result.rows.length === 0) {
             return res.status(404).json({message: "Datoteka nije pronađena."});
+        }
+
+        const storagePath = result.rows[0].storage_path;
+
+        if (storagePath?.startsWith("/uploads/")) {
+            const storedFileName = path.basename(storagePath);
+            await removeUploadedFile(
+                path.join(uploadsDirectory, storedFileName)
+            );
         }
 
         return res.status(204).send();

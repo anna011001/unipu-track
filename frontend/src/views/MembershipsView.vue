@@ -9,6 +9,7 @@ const membershipSummaries = ref([])
 const countries = ref([])
 const organizationalUnits = ref([])
 const staffMembers = ref([])
+const recordFiles = ref([])
 const selectedPeriodId = ref(null)
 const selectedNewMembership = ref(null)
 const selectedActiveMembership = ref(null)
@@ -160,6 +161,31 @@ function displayValue(value) {
   return value === null || value === undefined || value === '' ? '—' : value
 }
 
+function getEvidenceUrl(value) {
+  if (!value) {
+    return null
+  }
+
+  if (value.startsWith('/uploads/')) {
+    return `${api.defaults.baseURL}${value}`
+  }
+
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+function getEvidenceLabel(value) {
+  if (!value?.startsWith('/uploads/')) {
+    return displayValue(value)
+  }
+
+  return recordFiles.value.find((file) => file.storage_path === value)?.file_name || value
+}
+
 function escapeCsv(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`
 }
@@ -212,6 +238,7 @@ async function loadMemberships() {
       countriesResponse,
       unitsResponse,
       staffResponse,
+      filesResponse,
     ] =
       await Promise.all([
         api.get('/api/reporting-periods'),
@@ -221,6 +248,7 @@ async function loadMemberships() {
         api.get('/api/countries'),
         api.get('/api/organizational-units'),
         api.get('/api/staff-members'),
+        api.get('/api/record-files/files'),
       ])
 
     reportingPeriods.value = Array.isArray(periodsResponse.data) ? periodsResponse.data : []
@@ -230,6 +258,7 @@ async function loadMemberships() {
     countries.value = Array.isArray(countriesResponse.data) ? countriesResponse.data : []
     organizationalUnits.value = Array.isArray(unitsResponse.data) ? unitsResponse.data : []
     staffMembers.value = Array.isArray(staffResponse.data) ? staffResponse.data : []
+    recordFiles.value = Array.isArray(filesResponse.data) ? filesResponse.data : []
     selectedPeriodId.value = reportingPeriods.value[0]?.id ?? null
   } catch (error) {
     errorMessage.value =
@@ -298,14 +327,12 @@ onMounted(loadMemberships)
       <section class="membership-section">
         <div class="section-heading">
           <h2>Nova članstva ({{ filteredNewMemberships.length }})</h2>
-          <button
+          <RouterLink
             class="action-button wide-button"
-            type="button"
-            disabled
-            title="Forma za dodavanje bit će napravljena u sljedećem koraku"
+            to="/istrazivanje-i-razvoj/clanstva/novo"
           >
             Dodaj novo članstvo
-          </button>
+          </RouterLink>
         </div>
 
         <div v-if="filteredNewMemberships.length" class="records-layout">
@@ -370,7 +397,21 @@ onMounted(loadMemberships)
             <div><dt>Član Sveučilišta</dt><dd>{{ getStaffMemberName(selectedNewMembership.unipu_member_id) }}</dd></div>
             <div><dt>Sastavnica</dt><dd>{{ getOrganizationalUnitName(selectedNewMembership.organizational_unit_id) }}</dd></div>
             <div><dt>Koristi članstva</dt><dd>{{ displayValue(selectedNewMembership.membership_benefits) }}</dd></div>
-            <div><dt>Dokaz</dt><dd class="evidence-value">{{ displayValue(selectedNewMembership.evidence_link) }}</dd></div>
+            <div>
+              <dt>Dokaz</dt>
+              <dd class="evidence-value">
+                <a
+                  v-if="getEvidenceUrl(selectedNewMembership.evidence_link)"
+                  class="evidence-link"
+                  :href="getEvidenceUrl(selectedNewMembership.evidence_link)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ getEvidenceLabel(selectedNewMembership.evidence_link) }}
+                </a>
+                <span v-else>{{ displayValue(selectedNewMembership.evidence_link) }}</span>
+              </dd>
+            </div>
             <div><dt>Napomena</dt><dd>{{ displayValue(selectedNewMembership.notes) }}</dd></div>
           </dl>
         </div>
@@ -539,6 +580,9 @@ onMounted(loadMemberships)
 }
 
 .action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 96px;
   padding: 9px 18px;
   border: 1px solid rgb(var(--v-theme-category-border));
@@ -762,7 +806,12 @@ onMounted(loadMemberships)
 
 .edit-button {
   min-width: 78px;
+  border-color: rgb(var(--v-theme-on-surface));
   background: rgb(var(--v-theme-surface));
+}
+
+.edit-button:disabled {
+  opacity: 0.7;
 }
 
 .details-card dt {
@@ -777,6 +826,18 @@ onMounted(loadMemberships)
 
 .evidence-value {
   color: rgb(var(--v-theme-evidence-link));
+}
+
+.evidence-link {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.evidence-link:hover {
+  opacity: 0.72;
+  text-decoration: underline;
 }
 
 .empty-message {

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 import pool from "./db/pool.js";
 import organizationalUnitsRouter from "./routes/core/organizationalUnits.js";
 import reportingPeriodsRouter from "./routes/core/reportingPeriods.js";
@@ -38,6 +39,10 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(
+  "/uploads",
+  express.static(fileURLToPath(new URL("../uploads/", import.meta.url))),
+);
 
 app.use("/api/organizational-units", organizationalUnitsRouter);
 app.use("/api/reporting-periods", reportingPeriodsRouter);
