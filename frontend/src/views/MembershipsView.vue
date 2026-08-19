@@ -339,6 +339,62 @@ async function saveActiveMembership() {
   }
 }
 
+async function deleteNewMembership() {
+  const membership = selectedNewMembership.value
+  if (!membership) return
+  if (!window.confirm(`Želite li izbrisati novo članstvo u organizaciji „${membership.organization_name}”?`)) {
+    return
+  }
+
+  savingNewMembership.value = true
+  newEditError.value = ''
+
+  try {
+    await api.delete(`/api/memberships/new/${membership.id}`)
+    newMemberships.value = newMemberships.value.filter((item) => item.id !== membership.id)
+    selectedNewMembership.value = null
+    newEditForm.value = null
+    newMembershipsPage.value = Math.min(
+      newMembershipsPage.value,
+      Math.max(1, newMembershipsPageCount.value),
+    )
+    showSuccessMessage('Novo članstvo uspješno je izbrisano.')
+    await refreshMembershipSummaries()
+  } catch (error) {
+    newEditError.value = getApiError(error, 'Novo članstvo nije moguće izbrisati.')
+  } finally {
+    savingNewMembership.value = false
+  }
+}
+
+async function deleteActiveMembership() {
+  const membership = selectedActiveMembership.value
+  if (!membership) return
+  if (!window.confirm(`Želite li izbrisati aktivno članstvo u organizaciji „${membership.organization_name}”?`)) {
+    return
+  }
+
+  savingActiveMembership.value = true
+  activeEditError.value = ''
+
+  try {
+    await api.delete(`/api/memberships/active/${membership.id}`)
+    activeMemberships.value = activeMemberships.value.filter((item) => item.id !== membership.id)
+    selectedActiveMembership.value = null
+    activeEditForm.value = null
+    activeMembershipsPage.value = Math.min(
+      activeMembershipsPage.value,
+      Math.max(1, activeMembershipsPageCount.value),
+    )
+    showSuccessMessage('Aktivno članstvo uspješno je izbrisano.')
+    await refreshMembershipSummaries()
+  } catch (error) {
+    activeEditError.value = getApiError(error, 'Aktivno članstvo nije moguće izbrisati.')
+  } finally {
+    savingActiveMembership.value = false
+  }
+}
+
 function formatDate(value) {
   if (!value) {
     return '—'
@@ -663,6 +719,16 @@ onUnmounted(clearSuccessMessage)
                 >
                   Odustani
                 </button>
+                <button
+                  class="minus-button"
+                  type="button"
+                  aria-label="Izbriši novo članstvo"
+                  title="Izbriši novo članstvo"
+                  :disabled="savingNewMembership"
+                  @click="deleteNewMembership"
+                >
+                  −
+                </button>
               </template>
             </div>
             <p v-if="newEditError" class="edit-error" role="alert">{{ newEditError }}</p>
@@ -835,6 +901,16 @@ onUnmounted(clearSuccessMessage)
                 >
                   Odustani
                 </button>
+                <button
+                  class="minus-button"
+                  type="button"
+                  aria-label="Izbriši aktivno članstvo"
+                  title="Izbriši aktivno članstvo"
+                  :disabled="savingActiveMembership"
+                  @click="deleteActiveMembership"
+                >
+                  −
+                </button>
               </template>
             </div>
             <p v-if="activeEditError" class="edit-error" role="alert">{{ activeEditError }}</p>
@@ -986,6 +1062,33 @@ onUnmounted(clearSuccessMessage)
 }
 
 .action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.minus-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(var(--v-theme-on-surface));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.minus-button:hover:not(:disabled) {
+  border-color: rgb(var(--v-theme-error));
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+}
+
+.minus-button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
@@ -1186,6 +1289,7 @@ onUnmounted(clearSuccessMessage)
 
 .details-card .details-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   margin-bottom: 8px;
 }

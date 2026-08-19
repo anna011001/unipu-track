@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import MembershipsView from '../views/MembershipsView.vue'
 import NewMembershipView from '../views/NewMembershipView.vue'
+import NewProfessionalDevelopmentView from '../views/NewProfessionalDevelopmentView.vue'
+import ProfessionalDevelopmentsView from '../views/ProfessionalDevelopmentsView.vue'
 import ResearchDevelopmentView from '../views/ResearchDevelopmentView.vue'
 
 const router = createRouter({
@@ -26,6 +28,16 @@ const router = createRouter({
       path: '/istrazivanje-i-razvoj/clanstva/novo',
       name: 'new-membership',
       component: NewMembershipView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/strucna-usavrsavanja',
+      name: 'professional-developments',
+      component: ProfessionalDevelopmentsView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/strucna-usavrsavanja/novo',
+      name: 'new-professional-development',
+      component: NewProfessionalDevelopmentView,
     },
     {
       path: '/:pathMatch(.*)*',

@@ -6,6 +6,7 @@ const modules = [
   },
   {
     title: 'Stručna usavršavanja',
+    to: '/istrazivanje-i-razvoj/strucna-usavrsavanja',
   },
   {
     title: 'Sudjelovanja na događanjima',

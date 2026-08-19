@@ -31,6 +31,13 @@ function getRecordRoute(record) {
   }
   const type = membershipTypes[record.record_type]
 
+  if (record.record_type === 'PROFESSIONAL_DEVELOPMENTS') {
+    return {
+      name: 'professional-developments',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }
