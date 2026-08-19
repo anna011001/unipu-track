@@ -38,6 +38,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'EVENT_PARTICIPATIONS') {
+    return {
+      name: 'event-participations',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }

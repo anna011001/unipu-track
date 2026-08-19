@@ -10,6 +10,7 @@ const modules = [
   },
   {
     title: 'Sudjelovanja na događanjima',
+    to: '/istrazivanje-i-razvoj/sudjelovanja',
   },
   {
     title: 'Radionice',
