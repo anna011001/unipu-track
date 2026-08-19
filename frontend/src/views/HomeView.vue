@@ -59,6 +59,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'PROJECT_APPLICATIONS') {
+    return {
+      name: 'project-applications',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }

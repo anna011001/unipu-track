@@ -11,6 +11,8 @@ import WorkshopsView from '../views/WorkshopsView.vue'
 import NewWorkshopView from '../views/NewWorkshopView.vue'
 import CoauthorshipsView from '../views/CoauthorshipsView.vue'
 import NewCoauthoredPaperView from '../views/NewCoauthoredPaperView.vue'
+import ProjectApplicationsView from '../views/ProjectApplicationsView.vue'
+import NewProjectApplicationView from '../views/NewProjectApplicationView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +76,16 @@ const router = createRouter({
       path: '/istrazivanje-i-razvoj/koautorstva/novo',
       name: 'new-coauthored-paper',
       component: NewCoauthoredPaperView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/projektne-prijave',
+      name: 'project-applications',
+      component: ProjectApplicationsView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/projektne-prijave/nova',
+      name: 'new-project-application',
+      component: NewProjectApplicationView,
     },
     {
       path: '/:pathMatch(.*)*',

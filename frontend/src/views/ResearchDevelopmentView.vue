@@ -22,6 +22,7 @@ const modules = [
   },
   {
     title: 'Projektne prijave',
+    to: '/istrazivanje-i-razvoj/projektne-prijave',
   },
 ]
 </script>
