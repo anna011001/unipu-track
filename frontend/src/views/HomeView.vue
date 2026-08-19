@@ -45,6 +45,20 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'WORKSHOPS') {
+    return {
+      name: 'workshops',
+      query: { id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'COAUTHORED_PAPERS') {
+    return {
+      name: 'coauthorships',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }

@@ -7,6 +7,10 @@ import ProfessionalDevelopmentsView from '../views/ProfessionalDevelopmentsView.
 import ResearchDevelopmentView from '../views/ResearchDevelopmentView.vue'
 import EventParticipationsView from '../views/EventParticipationsView.vue'
 import NewEventParticipationView from '../views/NewEventParticipationView.vue'
+import WorkshopsView from '../views/WorkshopsView.vue'
+import NewWorkshopView from '../views/NewWorkshopView.vue'
+import CoauthorshipsView from '../views/CoauthorshipsView.vue'
+import NewCoauthoredPaperView from '../views/NewCoauthoredPaperView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +54,26 @@ const router = createRouter({
       path: '/istrazivanje-i-razvoj/sudjelovanja/novo',
       name: 'new-event-participation',
       component: NewEventParticipationView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/radionice',
+      name: 'workshops',
+      component: WorkshopsView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/radionice/novo',
+      name: 'new-workshop',
+      component: NewWorkshopView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/koautorstva',
+      name: 'coauthorships',
+      component: CoauthorshipsView,
+    },
+    {
+      path: '/istrazivanje-i-razvoj/koautorstva/novo',
+      name: 'new-coauthored-paper',
+      component: NewCoauthoredPaperView,
     },
     {
       path: '/:pathMatch(.*)*',

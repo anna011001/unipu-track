@@ -14,9 +14,11 @@ const modules = [
   },
   {
     title: 'Radionice',
+    to: '/istrazivanje-i-razvoj/radionice',
   },
   {
     title: 'Koautorstva',
+    to: '/istrazivanje-i-razvoj/koautorstva',
   },
   {
     title: 'Projektne prijave',

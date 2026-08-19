@@ -372,6 +372,16 @@ CREATE TABLE coauthored_papers (
         publication_year BETWEEN 2000
         AND EXTRACT(YEAR FROM CURRENT_DATE)::SMALLINT + 1
     ),
+    category                VARCHAR(50) CHECK (
+        category IN (
+            'WOS_SCOPUS_Q1_Q2',
+            'WOS_SCOPUS_Q3_Q4',
+            'OTHER_INTERNATIONAL_JOURNALS',
+            'DOMESTIC_JOURNALS',
+            'BOOK_CHAPTERS',
+            'CONFERENCE_PROCEEDINGS'
+        )
+    ),
     publication_link        TEXT,
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,

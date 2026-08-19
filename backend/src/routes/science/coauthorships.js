@@ -14,6 +14,10 @@ const allowedCategories = [
     "TOTAL"
 ];
 
+const allowedPaperCategories = allowedCategories.filter(
+    category => category !== "TOTAL"
+);
+
 function isPositiveInteger(value) {
     const number = Number(value);
 
@@ -350,6 +354,14 @@ function validatePaper(body, mode = "create") {
         !partial
     );
 
+    if (!partial || body.category !== undefined) {
+        if (!allowedPaperCategories.includes(body.category)) {
+            errors.push(
+                `Kategorija rada mora biti: ${allowedPaperCategories.join(", ")}.`
+            );
+        }
+    }
+
     validateOptionalText(
         body,
         "publication_link",
@@ -412,14 +424,19 @@ router.get("/year-totals", async (req, res, next) => {
     try {
         const result = await pool.query(`
             SELECT
-                cyt.*,
+                cp.reporting_period_id,
+                cp.publication_year AS calendar_year,
+                COUNT(*)::INTEGER AS paper_count,
                 rp.label AS reporting_period_label
-            FROM coauthorship_year_totals cyt
+            FROM coauthored_papers cp
             JOIN reporting_periods rp
-                ON rp.id = cyt.reporting_period_id
+                ON rp.id = cp.reporting_period_id
+            GROUP BY
+                cp.reporting_period_id,
+                cp.publication_year,
+                rp.label
             ORDER BY
-                cyt.calendar_year DESC,
-                cyt.created_at DESC
+                cp.publication_year DESC
         `);
 
         return res.status(200).json(result.rows);
@@ -706,6 +723,7 @@ router.post("/papers", async (req, res, next) => {
         reporting_period_id,
         authors_and_title,
         publication_year,
+        category,
         publication_link = null,
         created_by,
         updated_by
@@ -718,17 +736,19 @@ router.post("/papers", async (req, res, next) => {
                     reporting_period_id,
                     authors_and_title,
                     publication_year,
+                    category,
                     publication_link,
                     created_by,
                     updated_by
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *
             `,
             [
                 Number(reporting_period_id),
                 authors_and_title.trim(),
                 Number(publication_year),
+                category,
                 publication_link?.trim() || null,
                 Number(created_by),
                 Number(updated_by)
@@ -758,6 +778,7 @@ router.put("/papers/:id", validateId, async (req, res, next) => {
             reporting_period_id,
             authors_and_title,
             publication_year,
+            category,
             publication_link = null,
             updated_by
         } = req.body;
@@ -770,16 +791,18 @@ router.put("/papers/:id", validateId, async (req, res, next) => {
                         reporting_period_id = $1,
                         authors_and_title = $2,
                         publication_year = $3,
-                        publication_link = $4,
-                        updated_by = $5,
+                        category = $4,
+                        publication_link = $5,
+                        updated_by = $6,
                         updated_at = NOW()
-                    WHERE id = $6
+                    WHERE id = $7
                     RETURNING *
                 `,
                 [
                     Number(reporting_period_id),
                     authors_and_title.trim(),
                     Number(publication_year),
+                    category,
                     publication_link?.trim() || null,
                     Number(updated_by),
                     req.resourceId
@@ -805,6 +828,7 @@ router.patch("/papers/:id", validateId, async (req, res, next) => {
             "reporting_period_id",
             "authors_and_title",
             "publication_year",
+            "category",
             "publication_link",
             "updated_by"
         ];
@@ -883,15 +907,40 @@ router.get("/category-summaries", async (req, res, next) => {
         try {
             const result = await pool.query(`
                 SELECT
-                    ccs.*,
+                    cp.reporting_period_id,
+                    cp.category,
+                    cp.publication_year AS calendar_year,
+                    COUNT(*)::INTEGER AS paper_count,
                     rp.label AS reporting_period_label
-                FROM coauthorship_category_summaries ccs
+                FROM coauthored_papers cp
                 JOIN reporting_periods rp
-                    ON rp.id = ccs.reporting_period_id
+                    ON rp.id = cp.reporting_period_id
+                WHERE cp.category IS NOT NULL
+                GROUP BY
+                    cp.reporting_period_id,
+                    cp.category,
+                    cp.publication_year,
+                    rp.label
+
+                UNION ALL
+
+                SELECT
+                    cp.reporting_period_id,
+                    'TOTAL' AS category,
+                    cp.publication_year AS calendar_year,
+                    COUNT(*)::INTEGER AS paper_count,
+                    rp.label AS reporting_period_label
+                FROM coauthored_papers cp
+                JOIN reporting_periods rp
+                    ON rp.id = cp.reporting_period_id
+                GROUP BY
+                    cp.reporting_period_id,
+                    cp.publication_year,
+                    rp.label
+
                 ORDER BY
-                    ccs.calendar_year DESC,
-                    ccs.category,
-                    ccs.created_at DESC
+                    calendar_year DESC,
+                    category
             `);
 
             return res.status(200).json(result.rows);
