@@ -13,6 +13,7 @@ import CoauthorshipsView from '../views/CoauthorshipsView.vue'
 import NewCoauthoredPaperView from '../views/NewCoauthoredPaperView.vue'
 import ProjectApplicationsView from '../views/ProjectApplicationsView.vue'
 import NewProjectApplicationView from '../views/NewProjectApplicationView.vue'
+import InternationalCooperationView from '../views/InternationalCooperationView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -86,6 +87,11 @@ const router = createRouter({
       path: '/istrazivanje-i-razvoj/projektne-prijave/nova',
       name: 'new-project-application',
       component: NewProjectApplicationView,
+    },
+    {
+      path: '/medunarodna-suradnja',
+      name: 'international-cooperation',
+      component: InternationalCooperationView,
     },
     {
       path: '/:pathMatch(.*)*',

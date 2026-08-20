@@ -9,6 +9,7 @@ const categories = [
   },
   {
     title: 'Međunarodna suradnja',
+    to: '/medunarodna-suradnja',
   },
   {
     title: 'Nastava i kvaliteta',
