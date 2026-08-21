@@ -16,6 +16,8 @@ import NewProjectApplicationView from '../views/NewProjectApplicationView.vue'
 import InternationalCooperationView from '../views/InternationalCooperationView.vue'
 import VisitingResearchersView from '../views/VisitingResearchersView.vue'
 import NewVisitingResearcherView from '../views/NewVisitingResearcherView.vue'
+import InternationalConferencesView from '../views/InternationalConferencesView.vue'
+import NewInternationalConferenceView from '../views/NewInternationalConferenceView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -104,6 +106,16 @@ const router = createRouter({
       path: '/medunarodna-suradnja/gostujuci-istrazivaci/novo',
       name: 'new-visiting-researcher',
       component: NewVisitingResearcherView,
+    },
+    {
+      path: '/medunarodna-suradnja/medunarodne-konferencije',
+      name: 'international-conferences',
+      component: InternationalConferencesView,
+    },
+    {
+      path: '/medunarodna-suradnja/medunarodne-konferencije/nova',
+      name: 'new-international-conference',
+      component: NewInternationalConferenceView,
     },
     {
       path: '/:pathMatch(.*)*',

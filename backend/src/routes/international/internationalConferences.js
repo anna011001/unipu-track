@@ -124,6 +124,20 @@ function validateOptionalNumber(body, field, label, min, max, errors) {
     }
 }
 
+function validateParticipantCounts(totalParticipants, foreignParticipants, errors) {
+    if (
+        totalParticipants !== undefined &&
+        totalParticipants !== null &&
+        foreignParticipants !== undefined &&
+        foreignParticipants !== null &&
+        Number(foreignParticipants) > Number(totalParticipants)
+    ) {
+        errors.push(
+            "Broj stranih sudionika ne može biti veći od ukupnog broja sudionika."
+        );
+    }
+}
+
 function validateAuditFields(body, mode, errors) {
     if (mode === "create") {
         validateRequiredId(
@@ -334,6 +348,12 @@ function validateConference(body, mode = "create") {
         "Broj stranih sudionika",
         0,
         9999,
+        errors
+    );
+
+    validateParticipantCounts(
+        body.total_participants,
+        body.foreign_participants,
         errors
     );
 
@@ -857,6 +877,41 @@ router.patch("/:id", validateId, async (req, res, next) => {
     }
 
     try {
+        const currentResult = await pool.query(
+            `
+                SELECT total_participants, foreign_participants
+                FROM international_conferences
+                WHERE id = $1
+            `,
+            [req.resourceId]
+        );
+
+        if (currentResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "Međunarodna konferencija nije pronađena."
+            });
+        }
+
+        const current = currentResult.rows[0];
+        const relationshipErrors = [];
+
+        validateParticipantCounts(
+            req.body.total_participants !== undefined
+                ? req.body.total_participants
+                : current.total_participants,
+            req.body.foreign_participants !== undefined
+                ? req.body.foreign_participants
+                : current.foreign_participants,
+            relationshipErrors
+        );
+
+        if (relationshipErrors.length > 0) {
+            return res.status(400).json({
+                message: "Podaci nisu ispravni.",
+                errors: relationshipErrors
+            });
+        }
+
         const result = await patchRecord(
             "international_conferences",
             req.body,

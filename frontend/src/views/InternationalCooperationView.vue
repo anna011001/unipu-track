@@ -1,7 +1,7 @@
 <script setup>
 const modules = [
   { title: 'Gostujući istraživači', to: '/medunarodna-suradnja/gostujuci-istrazivaci' },
-  { title: 'Međunarodne konferencije' },
+  { title: 'Međunarodne konferencije', to: '/medunarodna-suradnja/medunarodne-konferencije' },
   { title: 'Mobilnost osoblja' },
   { title: 'Partnerstva' },
 ]

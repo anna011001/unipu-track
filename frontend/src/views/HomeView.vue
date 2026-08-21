@@ -81,6 +81,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'INTERNATIONAL_CONFERENCES') {
+    return {
+      name: 'international-conferences',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }
