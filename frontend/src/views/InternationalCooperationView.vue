@@ -1,6 +1,6 @@
 <script setup>
 const modules = [
-  { title: 'Gostujući istraživači' },
+  { title: 'Gostujući istraživači', to: '/medunarodna-suradnja/gostujuci-istrazivaci' },
   { title: 'Međunarodne konferencije' },
   { title: 'Mobilnost osoblja' },
   { title: 'Partnerstva' },
@@ -27,6 +27,9 @@ const modules = [
 <style scoped>
 .international-view {
   min-height: calc(100vh - 112px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   padding: 34px clamp(32px, 5vw, 128px) 80px;
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
@@ -40,15 +43,17 @@ const modules = [
 }
 
 .module-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(220px, 1fr));
   gap: clamp(42px, 6vh, 82px) clamp(44px, 7vw, 130px);
   margin-top: clamp(46px, 7vh, 92px);
   padding-inline: clamp(0px, 2vw, 42px);
 }
 
 .module-card {
-  min-height: clamp(220px, 18vw, 340px);
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -79,7 +84,9 @@ const modules = [
   }
 
   .module-grid {
+    flex: none;
     grid-template-columns: 1fr;
+    grid-template-rows: none;
     gap: 28px;
     padding-inline: 0;
   }

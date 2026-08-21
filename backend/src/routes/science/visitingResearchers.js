@@ -407,6 +407,33 @@ function validateRealizedResearcher(body, mode = "create") {
         errors
     );
 
+    validateOptionalInteger(
+        body,
+        "lecture_count",
+        "Broj predavanja",
+        0,
+        9999,
+        errors
+    );
+
+    validateOptionalInteger(
+        body,
+        "publication_count",
+        "Broj publikacija",
+        0,
+        9999,
+        errors
+    );
+
+    validateOptionalInteger(
+        body,
+        "project_count",
+        "Broj projekata",
+        0,
+        9999,
+        errors
+    );
+
     validateOptionalText(
         body,
         "notes",
@@ -710,6 +737,9 @@ router.post("/realized", async (req, res, next) => {
         mentor_contact = null,
         activities_during_stay = null,
         results = null,
+        lecture_count = 0,
+        publication_count = 0,
+        project_count = 0,
         notes = null,
         created_by,
         updated_by
@@ -732,13 +762,17 @@ router.post("/realized", async (req, res, next) => {
                     mentor_contact,
                     activities_during_stay,
                     results,
+                    lecture_count,
+                    publication_count,
+                    project_count,
                     notes,
                     created_by,
                     updated_by
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
-                    $9, $10, $11, $12, $13, $14, $15, $16
+                    $9, $10, $11, $12, $13, $14, $15, $16,
+                    $17, $18, $19
                 )
                 RETURNING *
             `,
@@ -762,6 +796,9 @@ router.post("/realized", async (req, res, next) => {
                 mentor_contact?.trim() || null,
                 activities_during_stay?.trim() || null,
                 results?.trim() || null,
+                Number(lecture_count),
+                Number(publication_count),
+                Number(project_count),
                 notes?.trim() || null,
                 Number(created_by),
                 Number(updated_by)
@@ -801,6 +838,9 @@ router.put("/realized/:id", validateId, async (req, res, next) => {
             mentor_contact = null,
             activities_during_stay = null,
             results = null,
+            lecture_count = 0,
+            publication_count = 0,
+            project_count = 0,
             notes = null,
             updated_by
         } = req.body;
@@ -823,10 +863,13 @@ router.put("/realized/:id", validateId, async (req, res, next) => {
                         mentor_contact = $11,
                         activities_during_stay = $12,
                         results = $13,
-                        notes = $14,
-                        updated_by = $15,
+                        lecture_count = $14,
+                        publication_count = $15,
+                        project_count = $16,
+                        notes = $17,
+                        updated_by = $18,
                         updated_at = NOW()
-                    WHERE id = $16
+                    WHERE id = $19
                     RETURNING *
                 `,
                 [
@@ -849,6 +892,9 @@ router.put("/realized/:id", validateId, async (req, res, next) => {
                     mentor_contact?.trim() || null,
                     activities_during_stay?.trim() || null,
                     results?.trim() || null,
+                    Number(lecture_count),
+                    Number(publication_count),
+                    Number(project_count),
                     notes?.trim() || null,
                     Number(updated_by),
                     req.resourceId
@@ -884,6 +930,9 @@ router.patch("/realized/:id", validateId, async (req, res, next) => {
             "mentor_contact",
             "activities_during_stay",
             "results",
+            "lecture_count",
+            "publication_count",
+            "project_count",
             "notes",
             "updated_by"
         ];
@@ -1326,14 +1375,36 @@ router.get("/unit-analyses", async (req, res, next) => {
     try {
         const result = await pool.query(`
             SELECT
-                vra.*,
+                rvr.reporting_period_id,
+                rvr.host_unit_id AS organizational_unit_id,
                 ou.name AS organizational_unit_name,
-                rp.label AS reporting_period_label
-            FROM visiting_researcher_unit_analyses vra
+                rp.label AS reporting_period_label,
+                COUNT(*)::INTEGER AS visit_count,
+                SUM(
+                    COALESCE(
+                        rvr.duration_days,
+                        CASE
+                            WHEN rvr.arrival_date IS NOT NULL
+                                AND rvr.departure_date IS NOT NULL
+                            THEN rvr.departure_date - rvr.arrival_date + 1
+                            ELSE 0
+                        END
+                    )
+                )::INTEGER AS total_days,
+                SUM(rvr.lecture_count)::INTEGER AS lecture_count,
+                SUM(rvr.publication_count)::INTEGER AS publication_count,
+                SUM(rvr.project_count)::INTEGER AS project_count
+            FROM realized_visiting_researchers rvr
             JOIN reporting_periods rp
-                ON rp.id = vra.reporting_period_id
+                ON rp.id = rvr.reporting_period_id
             JOIN organizational_units ou
-                ON ou.id = vra.organizational_unit_id
+                ON ou.id = rvr.host_unit_id
+            GROUP BY
+                rvr.reporting_period_id,
+                rvr.host_unit_id,
+                ou.name,
+                rp.label,
+                rp.start_date
             ORDER BY
                 rp.start_date DESC,
                 ou.name

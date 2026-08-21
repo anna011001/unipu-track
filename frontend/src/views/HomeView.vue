@@ -67,6 +67,20 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'REALIZED_VISITING_RESEARCHERS') {
+    return {
+      name: 'visiting-researchers',
+      query: { type: 'realized', id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'PLANNED_VISITING_RESEARCHERS') {
+    return {
+      name: 'visiting-researchers',
+      query: { type: 'planned', id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }
