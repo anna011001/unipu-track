@@ -1,31 +1,26 @@
 <script setup>
 const modules = [
-  { title: 'Gostujući istraživači', to: '/medunarodna-suradnja/gostujuci-istrazivaci' },
-  { title: 'Međunarodne konferencije', to: '/medunarodna-suradnja/medunarodne-konferencije' },
-  { title: 'Mobilnost osoblja', to: '/medunarodna-suradnja/mobilnost-osoblja' },
-  { title: 'Partnerstva', to: '/medunarodna-suradnja/partnerstva' },
+  { title: 'Optimizacija rasporeda nastavnika' },
+  { title: 'Prilagodbe rasporeda' },
+  { title: 'Mjere prema studentskim anketama' },
+  { title: 'Znanstvena produktivnost tijekom slobodne studijske godine' },
 ]
 </script>
 
 <template>
-  <main class="international-view">
-    <h1>Međunarodna suradnja</h1>
+  <main class="teaching-view">
+    <h1>Nastava i kvaliteta</h1>
 
     <div class="module-grid">
-      <template v-for="module in modules" :key="module.title">
-        <RouterLink v-if="module.to" class="module-card" :to="module.to">
-          {{ module.title }}
-        </RouterLink>
-        <article v-else class="module-card">
-          {{ module.title }}
-        </article>
-      </template>
+      <article v-for="module in modules" :key="module.title" class="module-card">
+        {{ module.title }}
+      </article>
     </div>
   </main>
 </template>
 
 <style scoped>
-.international-view {
+.teaching-view {
   min-height: calc(100vh - 112px);
   box-sizing: border-box;
   display: flex;
@@ -35,7 +30,7 @@ const modules = [
   color: rgb(var(--v-theme-on-background));
 }
 
-.international-view h1 {
+.teaching-view h1 {
   margin: 0;
   font-size: clamp(2rem, 2.1vw, 3.5rem);
   font-weight: 400;
@@ -66,20 +61,10 @@ const modules = [
   font-weight: 400;
   line-height: 1.4;
   text-align: center;
-  text-decoration: none;
-  transition: background-color 160ms ease, border-color 160ms ease;
-}
-
-.module-card[href] {
-  cursor: pointer;
-}
-
-.module-card[href]:hover {
-  background: rgb(var(--v-theme-category-card-hover));
 }
 
 @media (max-width: 760px) {
-  .international-view {
+  .teaching-view {
     padding: 28px 20px 56px;
   }
 

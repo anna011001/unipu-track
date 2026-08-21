@@ -13,6 +13,7 @@ const categories = [
   },
   {
     title: 'Nastava i kvaliteta',
+    to: '/nastava-i-kvaliteta',
   },
   {
     title: 'Suradnja i događanja',
@@ -92,6 +93,20 @@ function getRecordRoute(record) {
     return {
       name: 'staff-mobilities',
       query: { id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'NEW_INTERNATIONAL_COOPERATIONS') {
+    return {
+      name: 'international-partnerships',
+      query: { type: 'new', id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'ACTIVE_INTERNATIONAL_AGREEMENTS') {
+    return {
+      name: 'international-partnerships',
+      query: { type: 'agreement', id: record.record_id },
     }
   }
 

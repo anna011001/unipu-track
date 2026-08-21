@@ -20,6 +20,9 @@ import InternationalConferencesView from '../views/InternationalConferencesView.
 import NewInternationalConferenceView from '../views/NewInternationalConferenceView.vue'
 import StaffMobilitiesView from '../views/StaffMobilitiesView.vue'
 import NewStaffMobilityView from '../views/NewStaffMobilityView.vue'
+import InternationalPartnershipsView from '../views/InternationalPartnershipsView.vue'
+import NewInternationalPartnershipView from '../views/NewInternationalPartnershipView.vue'
+import TeachingQualityView from '../views/TeachingQualityView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -128,6 +131,21 @@ const router = createRouter({
       path: '/medunarodna-suradnja/mobilnost-osoblja/nova',
       name: 'new-staff-mobility',
       component: NewStaffMobilityView,
+    },
+    {
+      path: '/medunarodna-suradnja/partnerstva',
+      name: 'international-partnerships',
+      component: InternationalPartnershipsView,
+    },
+    {
+      path: '/medunarodna-suradnja/partnerstva/novo',
+      name: 'new-international-partnership',
+      component: NewInternationalPartnershipView,
+    },
+    {
+      path: '/nastava-i-kvaliteta',
+      name: 'teaching-quality',
+      component: TeachingQualityView,
     },
     {
       path: '/:pathMatch(.*)*',
