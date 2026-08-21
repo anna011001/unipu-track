@@ -88,6 +88,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'STAFF_MOBILITIES') {
+    return {
+      name: 'staff-mobilities',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }

@@ -2,7 +2,7 @@
 const modules = [
   { title: 'Gostujući istraživači', to: '/medunarodna-suradnja/gostujuci-istrazivaci' },
   { title: 'Međunarodne konferencije', to: '/medunarodna-suradnja/medunarodne-konferencije' },
-  { title: 'Mobilnost osoblja' },
+  { title: 'Mobilnost osoblja', to: '/medunarodna-suradnja/mobilnost-osoblja' },
   { title: 'Partnerstva' },
 ]
 </script>
