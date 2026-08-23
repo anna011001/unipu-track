@@ -4,6 +4,15 @@ import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
 
+const EVENT_TYPES = [
+    "Međunarodne konferencije",
+    "Domaće konferencije",
+    "Znanstveni skupovi",
+    "Stručni skupovi",
+    "Okrugli stolovi",
+    "Radionice"
+];
+
 function isPositiveInteger(value) {
     const number = Number(value);
     return Number.isInteger(number) && number > 0;
@@ -316,6 +325,14 @@ function validateHeldEvent(body, mode = "create") {
         validateOptionalText(body, field, label, maxLength, errors);
     }
 
+    if (
+        body.event_type !== undefined &&
+        typeof body.event_type === "string" &&
+        !EVENT_TYPES.includes(body.event_type.trim())
+    ) {
+        errors.push("Vrsta događanja nije dopuštena.");
+    }
+
     validateOptionalDate(
         body,
         "event_date",
@@ -393,6 +410,14 @@ function validatePlannedEvent(body, mode = "create") {
 
     for (const [field, label, maxLength] of textFields) {
         validateOptionalText(body, field, label, maxLength, errors);
+    }
+
+    if (
+        body.event_type !== undefined &&
+        typeof body.event_type === "string" &&
+        !EVENT_TYPES.includes(body.event_type.trim())
+    ) {
+        errors.push("Vrsta događanja nije dopuštena.");
     }
 
     validateOptionalDate(

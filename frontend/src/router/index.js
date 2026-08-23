@@ -27,6 +27,9 @@ import ScheduleOptimizationsView from '../views/ScheduleOptimizationsView.vue'
 import ScheduleAdjustmentsView from '../views/ScheduleAdjustmentsView.vue'
 import SurveyActionPlansView from '../views/SurveyActionPlansView.vue'
 import SabbaticalsView from '../views/SabbaticalsView.vue'
+import CooperationEventsView from '../views/CooperationEventsView.vue'
+import StakeholdersView from '../views/StakeholdersView.vue'
+import JointEventsView from '../views/JointEventsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -170,6 +173,21 @@ const router = createRouter({
       path: '/nastava-i-kvaliteta/znanstvena-produktivnost',
       name: 'sabbaticals',
       component: SabbaticalsView,
+    },
+    {
+      path: '/suradnja-i-dogadanja',
+      name: 'cooperation-events',
+      component: CooperationEventsView,
+    },
+    {
+      path: '/suradnja-i-dogadanja/dionici',
+      name: 'stakeholders',
+      component: StakeholdersView,
+    },
+    {
+      path: '/suradnja-i-dogadanja/zajednicka-dogadanja',
+      name: 'joint-events',
+      component: JointEventsView,
     },
     {
       path: '/:pathMatch(.*)*',

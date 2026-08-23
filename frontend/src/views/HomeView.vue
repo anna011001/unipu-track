@@ -17,6 +17,7 @@ const categories = [
   },
   {
     title: 'Suradnja i događanja',
+    to: '/suradnja-i-dogadanja',
   },
 ]
 
@@ -114,6 +115,20 @@ function getRecordRoute(record) {
     return {
       name: 'survey-action-plans',
       query: { id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'HELD_JOINT_EVENTS') {
+    return {
+      name: 'joint-events',
+      query: { type: 'held', id: record.record_id },
+    }
+  }
+
+  if (record.record_type === 'PLANNED_JOINT_EVENTS') {
+    return {
+      name: 'joint-events',
+      query: { type: 'planned', id: record.record_id },
     }
   }
 

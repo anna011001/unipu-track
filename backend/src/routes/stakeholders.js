@@ -384,6 +384,13 @@ function validateStakeholder(body, mode = "create", professional = false) {
         errors
     );
 
+    validateOptionalBoolean(
+        body,
+        "planned_new_cooperation",
+        "Planirana nova suradnja",
+        errors
+    );
+
     validateAuditFields(body, mode, errors);
 
     return errors;
@@ -723,6 +730,7 @@ router.post("/science", async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -745,6 +753,7 @@ router.post("/science", async (req, res, next) => {
                     cooperation_type,
                     cooperation_potential,
                     priority,
+                    planned_new_cooperation,
                     planned_activities,
                     status,
                     notes,
@@ -753,7 +762,7 @@ router.post("/science", async (req, res, next) => {
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
-                    $9, $10, $11, $12, $13, $14, $15, $16
+                    $9, $10, $11, $12, $13, $14, $15, $16, $17
                 )
                 RETURNING *
             `,
@@ -769,6 +778,7 @@ router.post("/science", async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -808,6 +818,7 @@ router.put("/science/:id", validateId, async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -830,12 +841,13 @@ router.put("/science/:id", validateId, async (req, res, next) => {
                     cooperation_type = $9,
                     cooperation_potential = $10,
                     priority = $11,
-                    planned_activities = $12,
-                    status = $13,
-                    notes = $14,
-                    updated_by = $15,
+                    planned_new_cooperation = $12,
+                    planned_activities = $13,
+                    status = $14,
+                    notes = $15,
+                    updated_by = $16,
                     updated_at = NOW()
-                WHERE id = $16
+                WHERE id = $17
                 RETURNING *
             `,
             [
@@ -850,6 +862,7 @@ router.put("/science/:id", validateId, async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -883,6 +896,7 @@ router.patch("/science/:id", validateId, async (req, res, next) => {
         "cooperation_type",
         "cooperation_potential",
         "priority",
+        "planned_new_cooperation",
         "planned_activities",
         "status",
         "notes",
@@ -1027,6 +1041,7 @@ router.post("/artistic", async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -1049,6 +1064,7 @@ router.post("/artistic", async (req, res, next) => {
                     cooperation_type,
                     cooperation_potential,
                     priority,
+                    planned_new_cooperation,
                     planned_activities,
                     status,
                     notes,
@@ -1057,7 +1073,7 @@ router.post("/artistic", async (req, res, next) => {
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
-                    $9, $10, $11, $12, $13, $14, $15, $16
+                    $9, $10, $11, $12, $13, $14, $15, $16, $17
                 )
                 RETURNING *
             `,
@@ -1073,6 +1089,7 @@ router.post("/artistic", async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -1112,6 +1129,7 @@ router.put("/artistic/:id", validateId, async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -1134,12 +1152,13 @@ router.put("/artistic/:id", validateId, async (req, res, next) => {
                     cooperation_type = $9,
                     cooperation_potential = $10,
                     priority = $11,
-                    planned_activities = $12,
-                    status = $13,
-                    notes = $14,
-                    updated_by = $15,
+                    planned_new_cooperation = $12,
+                    planned_activities = $13,
+                    status = $14,
+                    notes = $15,
+                    updated_by = $16,
                     updated_at = NOW()
-                WHERE id = $16
+                WHERE id = $17
                 RETURNING *
             `,
             [
@@ -1154,6 +1173,7 @@ router.put("/artistic/:id", validateId, async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -1187,6 +1207,7 @@ router.patch("/artistic/:id", validateId, async (req, res, next) => {
         "cooperation_type",
         "cooperation_potential",
         "priority",
+        "planned_new_cooperation",
         "planned_activities",
         "status",
         "notes",
@@ -1332,6 +1353,7 @@ router.post("/professional", async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -1354,6 +1376,7 @@ router.post("/professional", async (req, res, next) => {
                     cooperation_type,
                     cooperation_potential,
                     priority,
+                    planned_new_cooperation,
                     planned_activities,
                     status,
                     notes,
@@ -1362,7 +1385,7 @@ router.post("/professional", async (req, res, next) => {
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
-                    $9, $10, $11, $12, $13, $14, $15, $16
+                    $9, $10, $11, $12, $13, $14, $15, $16, $17
                 )
                 RETURNING *
             `,
@@ -1378,6 +1401,7 @@ router.post("/professional", async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -1418,6 +1442,7 @@ router.put("/professional/:id", validateId, async (req, res, next) => {
         cooperation_type = null,
         cooperation_potential = null,
         priority = null,
+        planned_new_cooperation = false,
         planned_activities = null,
         status = null,
         notes = null,
@@ -1440,12 +1465,13 @@ router.put("/professional/:id", validateId, async (req, res, next) => {
                     cooperation_type = $9,
                     cooperation_potential = $10,
                     priority = $11,
-                    planned_activities = $12,
-                    status = $13,
-                    notes = $14,
-                    updated_by = $15,
+                    planned_new_cooperation = $12,
+                    planned_activities = $13,
+                    status = $14,
+                    notes = $15,
+                    updated_by = $16,
                     updated_at = NOW()
-                WHERE id = $16
+                WHERE id = $17
                 RETURNING *
             `,
             [
@@ -1460,6 +1486,7 @@ router.put("/professional/:id", validateId, async (req, res, next) => {
                 cooperation_type?.trim() || null,
                 cooperation_potential?.trim() || null,
                 priority === null ? null : Number(priority),
+                planned_new_cooperation,
                 planned_activities?.trim() || null,
                 status?.trim() || null,
                 notes?.trim() || null,
@@ -1493,6 +1520,7 @@ router.patch("/professional/:id", validateId, async (req, res, next) => {
         "cooperation_type",
         "cooperation_potential",
         "priority",
+        "planned_new_cooperation",
         "planned_activities",
         "status",
         "notes",
