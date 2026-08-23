@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -167,7 +168,7 @@ onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
     <h1>Evidencija međunarodne mobilnosti osoblja</h1>
     <p v-if="loading">Učitavanje...</p><p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
-      <section class="overview"><label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><div class="metrics"><strong>Ukupno mobilnosti: {{ filtered.length }}</strong><strong>Osoba u mobilnosti: {{ peopleCount }}</strong><strong>Prosječno po osobi: {{ averagePerPerson }}</strong></div></section>
+      <section class="overview"><label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><div class="metrics"><strong>Ukupno mobilnosti: {{ filtered.length }}</strong><strong>Osoba u mobilnosti: {{ peopleCount }}</strong><strong>Prosječno po osobi: {{ averagePerPerson }}</strong></div><ExportButton :records="filtered" file-name="mobilnost-osoblja" /></section>
       <section class="records"><header class="heading"><h2>Pojedinačne mobilnosti ({{ filtered.length }})</h2><RouterLink class="action" to="/medunarodna-suradnja/mobilnost-osoblja/nova">Dodaj mobilnost</RouterLink></header>
         <div v-if="filtered.length" class="layout"><div><div class="list"><button v-for="item in shown" :key="item.id" :class="{ selected: selected?.id === item.id }" @click="choose(item)"><strong>{{ item.staff_first_name }} {{ item.staff_last_name }}</strong><span>{{ item.host_institution || item.mobility_type }} · {{ date(item.start_date) }}</span></button></div><div v-if="pageCount > 1" class="pagination"><button v-for="number in pageCount" :key="number" :class="{ active: page === number }" @click="page = number">{{ number }}</button></div></div>
           <div v-if="selected" ref="detailsCard" class="details"><div class="actions"><button v-if="!form" class="action" @click="startEdit">Uredi</button><template v-else><button class="action" :disabled="saving || deleting" @click="save">{{ saving ? 'Spremanje...' : 'Spremi' }}</button><button class="action" :disabled="saving || deleting" @click="cancelEdit">Odustani</button><button class="square minus" :disabled="saving || deleting" @click="remove">−</button></template></div><p v-if="editError" class="error">{{ editError }}</p>

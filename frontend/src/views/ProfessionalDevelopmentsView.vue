@@ -478,10 +478,6 @@ function exportRecords() {
   URL.revokeObjectURL(url)
 }
 
-function printPage() {
-  window.print()
-}
-
 async function openRecordFromRoute() {
   const id = Number(route.query.id)
   if (!Number.isInteger(id) || id <= 0) return
@@ -573,7 +569,6 @@ onUnmounted(() => {
         </div>
         <div class="page-actions">
           <button class="action-button" type="button" :disabled="!filteredDevelopments.length" @click="exportRecords">Izvoz</button>
-          <button class="action-button" type="button" @click="printPage">Ispis</button>
         </div>
       </section>
 

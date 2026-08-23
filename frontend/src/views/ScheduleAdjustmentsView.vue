@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const userId = 1
 const periods = ref([]), units = ref([]), staff = ref([]), reports = ref([]), measures = ref([]), beneficiaries = ref([]), planned = ref([]), effects = ref([])
@@ -77,9 +78,10 @@ onMounted(load)
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="!loading">
-      <section class="selectors">
+      <section class="selectors export-row">
         <label>Akademska godina<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
         <label>Sastavnica<select v-model.number="unitId"><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select></label>
+        <ExportButton :records="[...rows('measures').map((item) => ({ vrsta_zapisa: 'Mjera prilagodbe', ...item })), ...rows('beneficiaries').map((item) => ({ vrsta_zapisa: 'Korisnik mjere', ...item })), ...rows('planned').map((item) => ({ vrsta_zapisa: 'Planirana mjera', ...item }))]" file-name="prilagodbe-rasporeda" />
       </section>
 
       <section v-if="!selected" class="empty-report">

@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -138,6 +139,7 @@ onUnmounted(() => { if (timer) clearTimeout(timer) })
       <section class="overview">
         <label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
         <strong>Ukupno radova: {{ periodPapers.length }}</strong>
+        <ExportButton :records="filtered" file-name="koautorstva" />
       </section>
 
       <section class="records">

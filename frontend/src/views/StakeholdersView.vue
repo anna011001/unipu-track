@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const userId = 1
 const analyses = ref([])
@@ -184,7 +185,7 @@ watch(selectedType, resetSelection)
     <template v-if="!loading">
       <section class="topbar">
         <label>Analiza<select v-model.number="analysisId" :disabled="Boolean(analysisForm)"><option v-for="item in analyses" :key="item.id" :value="item.id">{{ analysisLabel(item) }}</option></select></label>
-        <div class="top-actions"><button v-if="!analysisForm" @click="newAnalysis">Nova analiza</button><button v-if="selectedAnalysis && !analysisForm" @click="editAnalysis">Uredi analizu</button><button v-if="selectedAnalysis && !analysisForm" @click="deleteAnalysis">Izbriši analizu</button></div>
+        <div class="top-actions"><ExportButton :records="[...rows('science').map((item) => ({ podrucje: 'Znanstveno', ...item })), ...rows('artistic').map((item) => ({ podrucje: 'Umjetničko', ...item })), ...rows('professional').map((item) => ({ podrucje: 'Strukovno', ...item }))]" file-name="kljucni-dionici" /><button v-if="!analysisForm" @click="newAnalysis">Nova analiza</button><button v-if="selectedAnalysis && !analysisForm" @click="editAnalysis">Uredi analizu</button><button v-if="selectedAnalysis && !analysisForm" @click="deleteAnalysis">Izbriši analizu</button></div>
       </section>
 
       <section v-if="analysisForm" class="analysis-form">

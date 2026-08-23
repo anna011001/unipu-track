@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -148,7 +149,7 @@ onMounted(load)
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="!loading">
-      <section class="period-row"><label>Izvještajno razdoblje<select v-model.number="periodId" :disabled="Boolean(form)"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label></section>
+      <section class="period-row export-row"><label>Izvještajno razdoblje<select v-model.number="periodId" :disabled="Boolean(form)"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><ExportButton :records="[...heldRows.map((item) => ({ vrsta_zapisa: 'Održano događanje', ...item })), ...plannedRows.map((item) => ({ vrsta_zapisa: 'Planirano događanje', ...item }))]" file-name="zajednicka-dogadanja" /></section>
       <section class="metrics"><div><span>Održana događanja</span><strong>{{ metrics.held }}</strong></div><div><span>Planirana događanja</span><strong>{{ metrics.planned }}</strong></div><div><span>Ukupno sudionika</span><strong>{{ metrics.participants }}</strong></div><div><span>Trošak održanih događanja</span><strong>{{ formatMoney(metrics.cost) }}</strong></div></section>
 
       <section v-for="(config, type) in configs" :key="type" class="data-section">

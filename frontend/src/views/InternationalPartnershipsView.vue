@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -195,7 +196,7 @@ onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
     <h1>Evidencija međunarodne suradnje</h1>
     <p v-if="loading">Učitavanje...</p><p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
-      <section class="overview"><label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><div class="metrics"><strong>Aktivna partnerstva: {{ filteredAgreements.length }}</strong><strong>Nova partnerstva: {{ filteredNew.length }}</strong><strong>Novi ugovori: {{ filteredNew.filter((item) => item.agreement_type).length }}</strong></div></section>
+      <section class="overview"><label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><div class="metrics"><strong>Aktivna partnerstva: {{ filteredAgreements.length }}</strong><strong>Nova partnerstva: {{ filteredNew.length }}</strong><strong>Novi ugovori: {{ filteredNew.filter((item) => item.agreement_type).length }}</strong></div><ExportButton :records="[...filteredNew.map((item) => ({ vrsta_zapisa: 'Novo partnerstvo', ...item })), ...filteredAgreements.map((item) => ({ vrsta_zapisa: 'Aktivno partnerstvo', ...item }))]" file-name="medunarodna-partnerstva" /></section>
 
       <section class="records"><header class="heading"><h2>Nova međunarodna partnerstva ({{ filteredNew.length }})</h2><RouterLink class="action" :to="{ name: 'new-international-partnership', query: { type: 'new' } }">Dodaj partnerstvo</RouterLink></header>
         <div v-if="filteredNew.length" class="layout"><div><div class="list"><button v-for="item in shownNew" :key="item.id" :class="{ selected: selected?.type === 'new' && selected.record.id === item.id }" @click="choose('new', item)"><strong>{{ item.partner_institution }}</strong><span>{{ item.country_name_hr || item.country_name_en || 'Država nije navedena' }} · {{ kindLabels[item.cooperation_kind] || 'Vrsta nije navedena' }}</span></button></div><div v-if="newPageCount > 1" class="pagination"><button v-for="number in newPageCount" :key="number" :class="{ active: newPage === number }" @click="newPage = number">{{ number }}</button></div></div>

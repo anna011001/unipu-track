@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -262,6 +263,7 @@ onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
       <section class="overview">
         <label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
         <strong>Ukupan broj realiziranih gostovanja: {{ periodRealized.length }}</strong>
+        <ExportButton :records="[...periodRealized.map((item) => ({ vrsta_zapisa: 'Realizirano gostovanje', ...item })), ...periodPlanned.map((item) => ({ vrsta_zapisa: 'Planirano gostovanje', ...item }))]" file-name="gostujuci-istrazivaci" />
       </section>
 
       <section class="records">

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const userId = 1
 const reports = ref([]), periods = ref([]), staff = ref([]), units = ref([]), users = ref([]), papers = ref([]), monographs = ref([]), summaries = ref([])
@@ -50,9 +51,10 @@ watch(periodId, selectReport); onMounted(load)
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="!loading">
-      <section class="selectors">
+      <section class="selectors export-row">
         <label>Razdoblje praćenja<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
         <button v-if="selected" class="delete-report" @click="deleteReport">Izbriši izvješće</button>
+        <ExportButton :records="[...rows('users').map((item) => ({ vrsta_zapisa: 'Korisnik slobodne studijske godine', ...item })), ...rows('papers').map((item) => ({ vrsta_zapisa: 'Q1/Q2 rad', ...item })), ...rows('monographs').map((item) => ({ vrsta_zapisa: 'Monografija', ...item }))]" file-name="znanstvena-produktivnost" />
       </section>
       <section v-if="!selected" class="empty-report"><div><h2>Izvješće još nije kreirano</h2><p>Za odabrano razdoblje nema podataka.</p></div><button @click="createReport">Kreiraj izvješće</button></section>
 

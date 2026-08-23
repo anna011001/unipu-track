@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -246,13 +247,14 @@ onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
     <p v-if="loading">Učitavanje...</p>
     <template v-else>
       <p v-if="error" class="error">{{ error }}</p>
-      <section class="selectors">
+      <section class="selectors export-row">
         <label>Akademska godina
           <select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select>
         </label>
         <label>Sastavnica
           <select v-model.number="unitId"><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select>
         </label>
+        <ExportButton :records="[...relatedOverloads.map((item) => ({ vrsta_zapisa: 'Prekoračenje norme', ...item })), ...relatedPromotions.map((item) => ({ vrsta_zapisa: 'Izbor ili reizbor', ...item }))]" file-name="optimizacija-rasporeda" />
       </section>
 
       <section v-if="!selected" class="empty-report">

@@ -497,10 +497,6 @@ function exportMemberships() {
   URL.revokeObjectURL(url)
 }
 
-function printPage() {
-  window.print()
-}
-
 async function openRecordFromRoute() {
   const recordId = Number(route.query.id)
   const recordType = route.query.type
@@ -637,7 +633,6 @@ onUnmounted(clearSuccessMessage)
           >
             Izvoz
           </button>
-          <button class="action-button" type="button" @click="printPage">Ispis</button>
         </div>
       </section>
 

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const userId = 1
 const route = useRoute()
@@ -254,6 +255,7 @@ onMounted(load)
           </select>
         </label>
         <div class="toolbar">
+          <ExportButton :records="filteredPlans" file-name="mjere-nakon-studentskih-anketa" />
           <button :disabled="saving" @click="newPlan">Novi plan</button>
           <button :disabled="saving" @click="save">{{ selectedId ? 'Spremi izmjene' : 'Spremi izvješće' }}</button>
           <button class="delete" :disabled="saving || !selectedId" @click="remove">Izbriši</button>

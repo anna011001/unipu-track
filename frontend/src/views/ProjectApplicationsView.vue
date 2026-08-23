@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const userId = 1
@@ -244,6 +245,7 @@ onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
           </select>
         </label>
         <strong>Broj novih projektnih prijava: {{ filtered.length }}</strong>
+        <ExportButton :records="filtered" file-name="projektne-prijave" />
       </section>
 
       <section class="records">

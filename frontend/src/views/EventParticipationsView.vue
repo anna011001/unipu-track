@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
 const currentUserId = 1
@@ -209,7 +210,7 @@ onUnmounted(() => { if (successTimer) clearTimeout(successTimer) })
     <h1>Evidencija sudjelovanja na znanstvenim i stručnim događanjima</h1>
     <p v-if="loading" class="message">Učitavanje...</p><p v-else-if="errorMessage" class="message error">{{ errorMessage }}</p>
     <template v-else>
-      <section class="overview"><label><span>Izvještajno razdoblje</span><select v-model.number="selectedPeriodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><strong>Ukupno sudjelovanja: {{ filtered.length }}</strong></section>
+      <section class="overview"><label><span>Izvještajno razdoblje</span><select v-model.number="selectedPeriodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label><strong>Ukupno sudjelovanja: {{ filtered.length }}</strong><ExportButton :records="filtered" file-name="sudjelovanja-na-dogadanjima" /></section>
       <div class="filters"><button v-for="type in types" :key="type.value" :class="{ active: selectedType === type.value }" @click="selectedType = type.value">{{ type.label }}</button></div>
       <section class="records-section"><div class="heading"><h2>Sudjelovanja ({{ filtered.length }})</h2><RouterLink class="action" to="/istrazivanje-i-razvoj/sudjelovanja/novo">Dodaj novo sudjelovanje</RouterLink></div>
         <div v-if="filtered.length" class="layout"><div><div class="list"><button v-for="record in paginated" :key="record.id" :class="{ selected: selected?.id === record.id }" @click="selectRecord(record)"><strong>{{ staffName(record) }}</strong><span>{{ record.event_name }}</span></button></div><nav v-if="pageCount > 1" class="pagination"><button v-for="page in pageCount" :key="page" :class="{ active: currentPage === page }" @click="currentPage = page">{{ page }}</button></nav></div>
