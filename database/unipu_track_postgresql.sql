@@ -806,12 +806,13 @@ CREATE TABLE international_cooperation_region_analyses (
 CREATE TABLE schedule_optimization_reports (
     id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     reporting_period_id     INTEGER NOT NULL REFERENCES reporting_periods(id) ON DELETE RESTRICT,
-    organizational_unit_id  INTEGER REFERENCES organizational_units(id) ON DELETE SET NULL,
+    organizational_unit_id  INTEGER NOT NULL REFERENCES organizational_units(id) ON DELETE RESTRICT,
     academic_year           VARCHAR(11) NOT NULL,
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (academic_year, organizational_unit_id)
 );
 
 CREATE TABLE schedule_overload_cases (
@@ -846,7 +847,7 @@ CREATE TABLE academic_promotion_cases (
     proposed_load           SMALLINT CHECK (proposed_load IS NULL OR proposed_load BETWEEN 0 AND 9999),
     courses_to_reassign     TEXT,
     replacement_course_holder VARCHAR(120),
-    research_time           VARCHAR(100),
+    research_time           INTEGER CHECK (research_time IS NULL OR research_time BETWEEN 0 AND 999999),
     procedure_status        VARCHAR(40),
     notes                   TEXT,
     created_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,

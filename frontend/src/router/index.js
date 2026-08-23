@@ -23,6 +23,7 @@ import NewStaffMobilityView from '../views/NewStaffMobilityView.vue'
 import InternationalPartnershipsView from '../views/InternationalPartnershipsView.vue'
 import NewInternationalPartnershipView from '../views/NewInternationalPartnershipView.vue'
 import TeachingQualityView from '../views/TeachingQualityView.vue'
+import ScheduleOptimizationsView from '../views/ScheduleOptimizationsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -146,6 +147,11 @@ const router = createRouter({
       path: '/nastava-i-kvaliteta',
       name: 'teaching-quality',
       component: TeachingQualityView,
+    },
+    {
+      path: '/nastava-i-kvaliteta/optimizacija-rasporeda',
+      name: 'schedule-optimizations',
+      component: ScheduleOptimizationsView,
     },
     {
       path: '/:pathMatch(.*)*',

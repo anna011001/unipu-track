@@ -181,6 +181,7 @@ function normalizeValue(field, value) {
         "current_load",
         "planned_reduction",
         "proposed_load",
+        "research_time",
         "teachers_over_norm_count",
         "teachers_in_reelection_count",
         "courses_for_redistribution_count",
@@ -273,11 +274,12 @@ function validateOptimizationReport(body, mode = "create") {
         !partial
     );
 
-    validateNullableId(
+    validateRequiredId(
         body,
         "organizational_unit_id",
         "ID sastavnice",
-        errors
+        errors,
+        !partial
     );
 
     validateRequiredText(
@@ -398,7 +400,6 @@ function validatePromotionCase(body, mode = "create") {
         ["candidate_title", "Zvanje za koje je nastavnik kandidat", 30],
         ["courses_to_reassign", "Kolegiji za preraspodjelu", null],
         ["replacement_course_holder", "Zamjenski nositelj kolegija", 120],
-        ["research_time", "Vrijeme za istraživanje", 100],
         ["procedure_status", "Status postupka", 40],
         ["notes", "Napomene", null]
     ];
@@ -422,7 +423,8 @@ function validatePromotionCase(body, mode = "create") {
 
     const integerFields = [
         ["current_load", "Trenutno opterećenje", 0, 9999],
-        ["proposed_load", "Predloženo opterećenje", 0, 9999]
+        ["proposed_load", "Predloženo opterećenje", 0, 9999],
+        ["research_time", "Vrijeme za istraživanje", 0, 999999]
     ];
 
     for (const [field, label, min, max] of integerFields) {
@@ -572,7 +574,7 @@ router.post("/reports", async (req, res, next) => {
 
     const {
         reporting_period_id,
-        organizational_unit_id = null,
+        organizational_unit_id,
         academic_year,
         created_by,
         updated_by
@@ -593,7 +595,7 @@ router.post("/reports", async (req, res, next) => {
             `,
             [
                 Number(reporting_period_id),
-                organizational_unit_id === null ? null : Number(organizational_unit_id),
+                Number(organizational_unit_id),
                 academic_year.trim(),
                 Number(created_by),
                 Number(updated_by)
@@ -618,7 +620,7 @@ router.put("/reports/:id", validateId, async (req, res, next) => {
 
     const {
         reporting_period_id,
-        organizational_unit_id = null,
+        organizational_unit_id,
         academic_year,
         updated_by
     } = req.body;
@@ -638,7 +640,7 @@ router.put("/reports/:id", validateId, async (req, res, next) => {
             `,
             [
                 Number(reporting_period_id),
-                organizational_unit_id === null ? null : Number(organizational_unit_id),
+                Number(organizational_unit_id),
                 academic_year.trim(),
                 Number(updated_by),
                 req.resourceId
@@ -1083,7 +1085,7 @@ router.post("/promotion-cases", async (req, res, next) => {
                 proposed_load === null ? null : Number(proposed_load),
                 courses_to_reassign?.trim() || null,
                 replacement_course_holder?.trim() || null,
-                research_time?.trim() || null,
+                research_time === null ? null : Number(research_time),
                 procedure_status?.trim() || null,
                 notes?.trim() || null,
                 Number(created_by),
@@ -1155,7 +1157,7 @@ router.put("/promotion-cases/:id", validateId, async (req, res, next) => {
                 proposed_load === null ? null : Number(proposed_load),
                 courses_to_reassign?.trim() || null,
                 replacement_course_holder?.trim() || null,
-                research_time?.trim() || null,
+                research_time === null ? null : Number(research_time),
                 procedure_status?.trim() || null,
                 notes?.trim() || null,
                 Number(updated_by),

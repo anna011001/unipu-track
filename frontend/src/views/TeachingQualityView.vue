@@ -1,6 +1,6 @@
 <script setup>
 const modules = [
-  { title: 'Optimizacija rasporeda nastavnika' },
+  { title: 'Optimizacija rasporeda nastavnika', to: '/nastava-i-kvaliteta/optimizacija-rasporeda' },
   { title: 'Prilagodbe rasporeda' },
   { title: 'Mjere prema studentskim anketama' },
   { title: 'Znanstvena produktivnost tijekom slobodne studijske godine' },
@@ -12,9 +12,10 @@ const modules = [
     <h1>Nastava i kvaliteta</h1>
 
     <div class="module-grid">
-      <article v-for="module in modules" :key="module.title" class="module-card">
-        {{ module.title }}
-      </article>
+      <template v-for="module in modules" :key="module.title">
+        <RouterLink v-if="module.to" class="module-card" :to="module.to">{{ module.title }}</RouterLink>
+        <article v-else class="module-card">{{ module.title }}</article>
+      </template>
     </div>
   </main>
 </template>
@@ -61,7 +62,11 @@ const modules = [
   font-weight: 400;
   line-height: 1.4;
   text-align: center;
+  text-decoration: none;
 }
+
+.module-card[href] { cursor: pointer; transition: background-color 160ms ease; }
+.module-card[href]:hover { background: rgb(var(--v-theme-category-card-hover)); }
 
 @media (max-width: 760px) {
   .teaching-view {
