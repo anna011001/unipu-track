@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../services/api.js'
 
 const userId = 1
+const route = useRoute()
 const plans = ref([])
 const periods = ref([])
 const staff = ref([])
@@ -222,6 +224,8 @@ async function load() {
     periods.value = periodResponse.data
     staff.value = staffResponse.data
     periodId.value = periods.value[0]?.id ?? null
+    const requestedPlan = plans.value.find((item) => Number(item.id) === Number(route.query.id))
+    if (requestedPlan && isSurveyActionPlan(requestedPlan)) loadPlan(requestedPlan)
   } catch (exception) {
     error.value = message(exception, 'Podatke nije moguće dohvatiti.')
   } finally {

@@ -110,6 +110,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'SURVEY_ACTION_PLANS') {
+    return {
+      name: 'survey-action-plans',
+      query: { id: record.record_id },
+    }
+  }
+
   if (!type) {
     return null
   }
