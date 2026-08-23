@@ -24,6 +24,9 @@ import InternationalPartnershipsView from '../views/InternationalPartnershipsVie
 import NewInternationalPartnershipView from '../views/NewInternationalPartnershipView.vue'
 import TeachingQualityView from '../views/TeachingQualityView.vue'
 import ScheduleOptimizationsView from '../views/ScheduleOptimizationsView.vue'
+import ScheduleAdjustmentsView from '../views/ScheduleAdjustmentsView.vue'
+import SurveyActionPlansView from '../views/SurveyActionPlansView.vue'
+import SabbaticalsView from '../views/SabbaticalsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -152,6 +155,21 @@ const router = createRouter({
       path: '/nastava-i-kvaliteta/optimizacija-rasporeda',
       name: 'schedule-optimizations',
       component: ScheduleOptimizationsView,
+    },
+    {
+      path: '/nastava-i-kvaliteta/prilagodbe-rasporeda',
+      name: 'schedule-adjustments',
+      component: ScheduleAdjustmentsView,
+    },
+    {
+      path: '/nastava-i-kvaliteta/mjere-prema-studentskim-anketama',
+      name: 'survey-action-plans',
+      component: SurveyActionPlansView,
+    },
+    {
+      path: '/nastava-i-kvaliteta/znanstvena-produktivnost',
+      name: 'sabbaticals',
+      component: SabbaticalsView,
     },
     {
       path: '/:pathMatch(.*)*',

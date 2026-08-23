@@ -1,9 +1,9 @@
 <script setup>
 const modules = [
   { title: 'Optimizacija rasporeda nastavnika', to: '/nastava-i-kvaliteta/optimizacija-rasporeda' },
-  { title: 'Prilagodbe rasporeda' },
-  { title: 'Mjere prema studentskim anketama' },
-  { title: 'Znanstvena produktivnost tijekom slobodne studijske godine' },
+  { title: 'Prilagodbe rasporeda', to: '/nastava-i-kvaliteta/prilagodbe-rasporeda' },
+  { title: 'Planiranje mjera prema studentskim anketama', to: '/nastava-i-kvaliteta/mjere-prema-studentskim-anketama' },
+  { title: 'Znanstvena produktivnost tijekom slobodne studijske godine', to: '/nastava-i-kvaliteta/znanstvena-produktivnost' },
 ]
 </script>
 
