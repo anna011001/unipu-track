@@ -137,8 +137,10 @@ onUnmounted(() => { if (timer) clearTimeout(timer) })
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
       <section class="overview">
-        <label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
-        <strong>Ukupno radova: {{ periodPapers.length }}</strong>
+        <div class="overview-info">
+          <label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
+          <strong>Ukupno radova: {{ periodPapers.length }}</strong>
+        </div>
         <ExportButton :records="filtered" file-name="koautorstva" />
       </section>
 
@@ -169,7 +171,7 @@ onUnmounted(() => { if (timer) clearTimeout(timer) })
 
 <style scoped>
 .view{min-height:calc(100vh - 112px);padding:34px clamp(32px,5vw,128px) 90px;background:rgb(var(--v-theme-background));color:rgb(var(--v-theme-on-background))}.breadcrumbs,.overview,.heading,.filters,.actions,.toolbar{display:flex;align-items:center}.breadcrumbs{gap:10px;color:rgb(var(--v-theme-muted))}.breadcrumbs a{color:inherit;text-decoration:none}.breadcrumbs a:hover{color:rgb(var(--v-theme-primary))}
-h1{margin:18px 0 0;color:rgb(var(--v-theme-primary));font-size:clamp(1.5rem,1.65vw,2.35rem);font-weight:400}h2{font-weight:400}.overview,.heading{justify-content:space-between}.overview{margin-top:36px}.overview label{display:grid;gap:8px;color:rgb(var(--v-theme-primary));font-weight:700}
+h1{margin:18px 0 0;color:rgb(var(--v-theme-primary));font-size:clamp(1.5rem,1.65vw,2.35rem);font-weight:400}h2{font-weight:400}.overview,.heading{justify-content:space-between}.overview{margin-top:36px}.overview-info{display:flex;align-items:flex-end;gap:clamp(32px,4vw,64px)}.overview label{display:grid;gap:8px;color:rgb(var(--v-theme-primary));font-weight:700}.overview-info>strong{display:flex;align-items:center;min-height:43px}
 select,.input,.table-input{padding:9px 12px;border:1px solid rgb(var(--v-theme-category-border));border-radius:7px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));font:inherit}.filters{flex-wrap:wrap;gap:10px;margin-top:44px}.filters button,.action,.table-button{padding:9px 15px;border:1px solid rgb(var(--v-theme-category-border));border-radius:7px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));cursor:pointer;font:inherit}.filters button{border-radius:999px}.filters .active,.filters button:hover,.action:hover,.table-button:hover:not(:disabled),.plus:hover{background:rgb(var(--v-theme-primary));color:rgb(var(--v-theme-on-primary))}
 .records,.summary-section{margin-top:70px}.layout{display:grid;grid-template-columns:minmax(380px,1.1fr) minmax(440px,.9fr);gap:clamp(32px,5vw,88px);align-items:start;margin-top:32px}.list{display:grid;gap:5px}.list button{display:grid;gap:5px;padding:13px 16px;border:0;border-radius:7px;background:transparent;color:rgb(var(--v-theme-membership-link));cursor:pointer;text-align:left;font:inherit;line-height:1.45}.list button span{color:rgb(var(--v-theme-muted))}.list button:hover,.list button.selected{background:rgba(var(--v-theme-primary),.1)}.pagination{display:flex;justify-content:center;gap:5px;margin-top:20px}.pagination button{width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:rgb(var(--v-theme-primary))}.pagination button.active{background:rgb(var(--v-theme-primary));color:rgb(var(--v-theme-on-primary))}
 .details{display:grid;gap:14px;margin:0;padding:clamp(28px,3vw,48px);border:1px solid rgb(var(--v-theme-category-border));border-radius:10px;background:rgb(var(--v-theme-category-card));color:rgb(var(--v-theme-on-category-card))}.details>div:not(.actions){display:grid;grid-template-columns:minmax(160px,.9fr) minmax(0,1.1fr);gap:22px}.details dd{margin:0;overflow-wrap:anywhere}.actions{justify-content:flex-end;gap:8px}.input{width:100%;box-sizing:border-box}
@@ -179,5 +181,5 @@ select,.input,.table-input{padding:9px 12px;border:1px solid rgb(var(--v-theme-c
 .category-table{width:fit-content;max-width:100%}.category-table table{width:auto;min-width:680px}.category-table th:first-child,.category-table td:first-child{width:500px}.category-table th:not(:first-child),.category-table td:not(:first-child){min-width:110px;text-align:center}
 a{color:rgb(var(--v-theme-evidence-link))}.error{color:rgb(var(--v-theme-error))}.snackbar{position:fixed;right:28px;bottom:28px;padding:14px 18px;border:1px solid #62a957;border-radius:7px;background:#b8f5ae;color:#1f5525}
 @media(max-width:900px){.layout{grid-template-columns:1fr}}
-@media(max-width:650px){.view{padding:28px 20px}.overview,.heading{align-items:stretch;flex-direction:column;gap:20px}.details>div:not(.actions){grid-template-columns:1fr}.new-summary-fields{grid-template-columns:1fr}}
+@media(max-width:650px){.view{padding:28px 20px}.overview,.heading{align-items:stretch;flex-direction:column;gap:20px}.overview-info{align-items:stretch;flex-direction:column;gap:14px}.overview-info>strong{min-height:0}.details>div:not(.actions){grid-template-columns:1fr}.new-summary-fields{grid-template-columns:1fr}}
 </style>

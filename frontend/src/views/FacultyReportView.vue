@@ -31,6 +31,18 @@ const selectedUnit = computed(() => units.value.find((item) => Number(item.id) =
 const academicYear = computed(() => selectedPeriod.value?.label || '20../20..')
 const linkedKeys = computed(() => [...new Set(reportSections.flatMap((section) => section.links || []))])
 
+function sectionContent(section) {
+  if (section.content?.length) return section.content
+  return [
+    ...(section.links?.length ? [{ type: 'evidence', keys: section.links }] : []),
+    ...(section.tables || []).map((table) => ({ type: 'table', endpoint: table.endpoint })),
+  ]
+}
+
+function sectionTable(section, endpoint) {
+  return section.tables?.find((table) => table.endpoint === endpoint)
+}
+
 function toast(message) {
   success.value = message
   if (toastTimer) clearTimeout(toastTimer)
@@ -378,40 +390,41 @@ onBeforeUnmount(() => {
             <p class="narrative-print print-only">{{ draft[section.narrative] || 'Nije uneseno.' }}</p>
           </label>
 
-          <div v-if="section.links?.length" class="linked-evidence">
-            <h3 class="no-print">Povezane evidencije iz aplikacije</h3>
-            <div class="linked-grid no-print">
-              <RouterLink
-                v-for="key in section.links"
-                :key="key"
-                :to="linkedEvidence[key].route"
-                class="linked-card"
-                target="_blank"
-                rel="noopener"
-              >
-                <span>{{ linkedEvidence[key].label }}</span>
-                <strong>{{ linkedCounts[key] === null || linkedCounts[key] === undefined ? '—' : linkedCounts[key] }}</strong>
-              </RouterLink>
+          <template v-for="(block, blockIndex) in sectionContent(section)" :key="`${block.type}-${block.endpoint || block.keys?.join('-')}-${blockIndex}`">
+            <div v-if="block.type === 'evidence'" class="linked-evidence">
+              <h3 v-if="block.title" class="no-print">{{ block.title }}</h3>
+              <div class="linked-grid no-print">
+                <RouterLink
+                  v-for="key in block.keys"
+                  :key="key"
+                  :to="linkedEvidence[key].route"
+                  class="linked-card"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span>{{ linkedEvidence[key].label }}</span>
+                  <strong>{{ linkedCounts[key] === null || linkedCounts[key] === undefined ? '—' : linkedCounts[key] }}</strong>
+                </RouterLink>
+              </div>
+              <ReadOnlyEvidenceTable
+                v-for="key in block.keys"
+                :key="`${key}-table`"
+                :title="linkedEvidence[key].label"
+                :records="linkedRecords[key] || []"
+                :columns="linkedEvidence[key].columns || []"
+                :route="linkedEvidence[key].route"
+              />
             </div>
-            <ReadOnlyEvidenceTable
-              v-for="key in section.links"
-              :key="`${key}-table`"
-              :title="linkedEvidence[key].label"
-              :records="linkedRecords[key] || []"
-              :columns="linkedEvidence[key].columns || []"
-              :route="linkedEvidence[key].route"
-            />
-          </div>
 
-          <EditableReportTable
-            v-for="table in section.tables"
-            :key="table.endpoint"
-            :config="table"
-            :report-id="report.id"
-            :rows="tableRows[table.endpoint] || []"
-            @changed="updateRows(table.endpoint, $event)"
-            @deleted="toast('Zapis je uspješno izbrisan.')"
-          />
+            <EditableReportTable
+              v-else-if="block.type === 'table' && sectionTable(section, block.endpoint)"
+              :config="sectionTable(section, block.endpoint)"
+              :report-id="report.id"
+              :rows="tableRows[block.endpoint] || []"
+              @changed="updateRows(block.endpoint, $event)"
+              @deleted="toast('Zapis je uspješno izbrisan.')"
+            />
+          </template>
         </section>
         </article>
       </div>

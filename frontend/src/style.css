@@ -30,3 +30,30 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Poravnanje brojača uz odabir izvještajnog razdoblja. */
+.view > .overview:has(> strong),
+.events-view > .overview:has(> strong) {
+  align-items: flex-end;
+}
+
+.view > .overview:has(> strong) > strong,
+.events-view > .overview:has(> strong) > strong {
+  display: flex;
+  align-items: center;
+  min-height: 43px;
+  margin-left: clamp(32px, 4vw, 64px);
+}
+
+@media (max-width: 650px) {
+  .view > .overview:has(> strong),
+  .events-view > .overview:has(> strong) {
+    align-items: stretch;
+  }
+
+  .view > .overview:has(> strong) > strong,
+  .events-view > .overview:has(> strong) > strong {
+    min-height: 0;
+    margin-left: 0;
+  }
+}
