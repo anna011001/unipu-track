@@ -209,9 +209,7 @@ async function loadRecentRecords() {
   errorMessage.value = ''
 
   try {
-    const response = await api.get('/api/dashboard/recent', {
-      params: { user_id: 1 },
-    })
+    const response = await api.get('/api/dashboard/recent')
     records.value = Array.isArray(response.data) ? response.data : []
   } catch (error) {
     errorMessage.value =

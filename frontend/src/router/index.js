@@ -31,10 +31,25 @@ import CooperationEventsView from '../views/CooperationEventsView.vue'
 import StakeholdersView from '../views/StakeholdersView.vue'
 import JointEventsView from '../views/JointEventsView.vue'
 import FacultyReportView from '../views/FacultyReportView.vue'
+import LoginView from '../views/LoginView.vue'
+import RegistrationApprovalView from '../views/RegistrationApprovalView.vue'
+import { isAuthenticated } from '../services/auth.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/prijava',
+      name: 'login',
+      component: LoginView,
+      meta: { public: true },
+    },
+    {
+      path: '/odobrenje-registracije',
+      name: 'registration-approval',
+      component: RegistrationApprovalView,
+      meta: { public: true, allowAuthenticated: true },
+    },
     {
       path: '/',
       name: 'home',
@@ -200,6 +215,19 @@ const router = createRouter({
       redirect: '/',
     },
   ],
+})
+
+router.beforeEach((to) => {
+  if (to.meta.public && isAuthenticated.value && !to.meta.allowAuthenticated) return { name: 'home' }
+
+  if (!to.meta.public && !isAuthenticated.value) {
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath },
+    }
+  }
+
+  return true
 })
 
 export default router

@@ -1,12 +1,15 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import logo from '../assets/unipu-track-logo.png'
 import api from '../services/api.js'
+import { clearAuthSession, currentUser, updateCurrentUser } from '../services/auth.js'
 
-const userName = ref('Korisnik')
+const router = useRouter()
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === 'unipuDark')
+const userName = computed(() => currentUser.value ? `${currentUser.value.first_name} ${currentUser.value.last_name}` : 'Korisnik')
 
 function toggleTheme() {
   const newTheme = isDark.value ? 'unipuTheme' : 'unipuDark'
@@ -16,11 +19,14 @@ function toggleTheme() {
 
 async function loadCurrentUser() {
   try {
-    const response = await api.get('/api/users/1')
-    userName.value = `${response.data.first_name} ${response.data.last_name}`
-  } catch {
-    userName.value = 'Korisnik'
-  }
+    const response = await api.get('/api/auth/me')
+    updateCurrentUser(response.data)
+  } catch {}
+}
+
+async function logout() {
+  clearAuthSession()
+  await router.replace({ name: 'login' })
 }
 
 onMounted(() => {
@@ -45,6 +51,7 @@ onMounted(() => {
         <RouterLink class="nav-link" to="/">Početna</RouterLink>
         <RouterLink class="nav-link" to="/glavni-obrazac">Glavni obrazac</RouterLink>
         <span class="nav-link">{{ userName }}</span>
+        <button class="logout-button" type="button" @click="logout">Odjava</button>
         <button
           class="theme-toggle"
           type="button"
@@ -98,6 +105,21 @@ onMounted(() => {
   color: rgb(var(--v-theme-primary));
 }
 
+.logout-button {
+  padding: 7px 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.75);
+  border-radius: 7px;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+}
+
+.logout-button:hover {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+
 .theme-toggle {
   width: 34px;
   height: 34px;
@@ -140,6 +162,11 @@ onMounted(() => {
 
   .nav-link {
     font-size: 0.78rem;
+  }
+
+  .logout-button {
+    padding: 5px 7px;
+    font-size: 0.72rem;
   }
 
   .theme-toggle {

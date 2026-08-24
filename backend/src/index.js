@@ -28,6 +28,8 @@ import surveyActionPlansRouter from "./routes/teaching/surveyActionPlans.js";
 import facultyReportsRouter from "./routes/faculty/facultyReports.js";
 import recordFilesRouter from "./routes/system/recordFiles.js";
 import dashboardRouter from "./routes/system/dashboard.js";
+import authRouter from "./routes/system/auth.js";
+import { authenticate } from "./middleware/authenticate.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -44,6 +46,9 @@ app.use(
   "/uploads",
   express.static(fileURLToPath(new URL("../uploads/", import.meta.url))),
 );
+
+app.use("/api/auth", authRouter);
+app.use("/api", authenticate);
 
 app.use("/api/organizational-units", organizationalUnitsRouter);
 app.use("/api/reporting-periods", reportingPeriodsRouter);

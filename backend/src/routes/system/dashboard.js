@@ -3,20 +3,7 @@ import pool from "../../db/pool.js";
 
 const router = express.Router();
 
-function isPositiveInteger(value) {
-    const number = Number(value);
-    return Number.isInteger(number) && number > 0;
-}
-
 router.get("/recent", async (req, res, next) => {
-    const { user_id } = req.query;
-
-    if (!isPositiveInteger(user_id)) {
-        return res.status(400).json({
-            message: "user_id je obavezan i mora biti pozitivan cijeli broj."
-        });
-    }
-
     try {
         const result = await pool.query(
             `
@@ -26,7 +13,7 @@ router.get("/recent", async (req, res, next) => {
                 ORDER BY updated_at DESC
                 LIMIT 10
             `,
-            [Number(user_id)]
+            [req.authenticatedUser.id]
         );
 
         return res.status(200).json(result.rows);
