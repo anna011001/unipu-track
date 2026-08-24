@@ -43,6 +43,7 @@ onMounted(() => {
 
       <nav class="header-navigation" aria-label="Glavna navigacija">
         <RouterLink class="nav-link" to="/">Početna</RouterLink>
+        <RouterLink class="nav-link" to="/glavni-obrazac">Glavni obrazac</RouterLink>
         <span class="nav-link">{{ userName }}</span>
         <button
           class="theme-toggle"
@@ -82,7 +83,7 @@ onMounted(() => {
 .header-navigation {
   display: flex;
   align-items: center;
-  gap: clamp(32px, 5vw, 112px);
+  gap: clamp(22px, 3.5vw, 72px);
 }
 
 .nav-link {
@@ -134,11 +135,11 @@ onMounted(() => {
   }
 
   .header-navigation {
-    gap: 16px;
+    gap: 12px;
   }
 
   .nav-link {
-    font-size: 0.9rem;
+    font-size: 0.78rem;
   }
 
   .theme-toggle {

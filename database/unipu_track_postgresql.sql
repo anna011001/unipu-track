@@ -1258,6 +1258,18 @@ CREATE TABLE faculty_council_statistics (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE faculty_council_meeting_records (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
+    record_title        VARCHAR(250) NOT NULL,
+    meeting_date        DATE,
+    record_link         TEXT NOT NULL,
+    created_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by          INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE alumni_organizations (
     id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     faculty_report_id   INTEGER NOT NULL REFERENCES faculty_reports(id) ON DELETE CASCADE,
@@ -1615,7 +1627,7 @@ BEGIN
         'sabbatical_reports', 'sabbatical_users', 'sabbatical_q1_q2_papers', 'sabbatical_monographs',
         'held_joint_events', 'planned_joint_events', 'project_applications', 'survey_action_plans',
         'faculty_reports', 'staff_elections', 'newly_employed_teachers', 'retired_teachers',
-        'doctoral_assistants', 'faculty_committees', 'faculty_council_statistics',
+        'doctoral_assistants', 'faculty_committees', 'faculty_council_statistics', 'faculty_council_meeting_records',
         'alumni_organizations', 'business_partners', 'funded_projects',
         'doctoral_generation_statistics', 'defended_doctoral_dissertations',
         'doctoral_co_mentors', 'external_doctoral_mentorships',
@@ -1668,6 +1680,7 @@ CREATE INDEX idx_held_joint_events_period ON held_joint_events(reporting_period_
 CREATE INDEX idx_planned_joint_events_period ON planned_joint_events(reporting_period_id);
 CREATE INDEX idx_project_applications_period ON project_applications(reporting_period_id);
 CREATE INDEX idx_faculty_reports_period ON faculty_reports(reporting_period_id);
+CREATE INDEX idx_faculty_council_records_report ON faculty_council_meeting_records(faculty_report_id);
 
 CREATE INDEX idx_new_memberships_recent ON new_memberships(updated_by, updated_at DESC);
 CREATE INDEX idx_active_memberships_recent ON active_memberships(updated_by, updated_at DESC);

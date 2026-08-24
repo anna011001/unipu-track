@@ -30,6 +30,7 @@ import SabbaticalsView from '../views/SabbaticalsView.vue'
 import CooperationEventsView from '../views/CooperationEventsView.vue'
 import StakeholdersView from '../views/StakeholdersView.vue'
 import JointEventsView from '../views/JointEventsView.vue'
+import FacultyReportView from '../views/FacultyReportView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -188,6 +189,11 @@ const router = createRouter({
       path: '/suradnja-i-dogadanja/zajednicka-dogadanja',
       name: 'joint-events',
       component: JointEventsView,
+    },
+    {
+      path: '/glavni-obrazac',
+      name: 'faculty-report',
+      component: FacultyReportView,
     },
     {
       path: '/:pathMatch(.*)*',

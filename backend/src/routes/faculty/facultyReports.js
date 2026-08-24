@@ -380,16 +380,26 @@ const configs = [
         ]
     },
     {
+        path: "council-meeting-records",
+        table: "faculty_council_meeting_records",
+        fields: [
+            { name: "faculty_report_id", label: "ID izvješća fakulteta", type: "id", required: true },
+            { name: "record_title", label: "Naziv sjednice ili zapisnika", type: "text", maxLength: 250, required: true },
+            { name: "meeting_date", label: "Datum sjednice", type: "date" },
+            { name: "record_link", label: "Poveznica na zapisnik", type: "text", required: true }
+        ]
+    },
+    {
         path: "alumni-organizations",
         table: "alumni_organizations",
         fields: [
             { name: "faculty_report_id", label: "ID izvješća fakulteta", type: "id", required: true },
             { name: "alumni_name", label: "Naziv alumni organizacije", type: "text", maxLength: 150, required: true },
-            { name: "founded_on", label: "Datum osnivanja", type: "date" },
+            { name: "founded_on", label: "Datum osnutka", type: "date" },
             { name: "current_member_count", label: "Trenutni broj članova", type: "integer", min: 0, max: 9999 },
             { name: "previous_member_count", label: "Prethodni broj članova", type: "integer", min: 0, max: 9999 },
-            { name: "president_contact", label: "Kontakt predsjednika", type: "text", maxLength: 180 },
-            { name: "annual_activity_count", label: "Broj godišnjih aktivnosti", type: "integer", min: 0, max: 999 }
+            { name: "president_contact", label: "Predsjednik i mail", type: "text", maxLength: 180 },
+            { name: "annual_activity_count", label: "Broj aktivnosti u godini", type: "integer", min: 0, max: 999 }
         ]
     },
     {
@@ -403,7 +413,12 @@ const configs = [
             { name: "status", label: "Status", type: "text", maxLength: 30 },
             { name: "agreement_year", label: "Godina sporazuma", type: "integer", min: 1950, max: currentYear + 1 },
             { name: "annual_results", label: "Godišnji rezultati", type: "text" }
-        ]
+        ],
+        enumFields: {
+            sector: ["Ustanova", "Državna uprava", "Javni sektor"],
+            cooperation_type: ["Stručna praksa i zapošljavanje studenata", "Strateško partnerstvo"],
+            status: ["Postojeći", "Novi"]
+        }
     },
     {
         path: "funded-projects",
