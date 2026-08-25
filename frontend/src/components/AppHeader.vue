@@ -10,6 +10,7 @@ const router = useRouter()
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === 'unipuDark')
 const userName = computed(() => currentUser.value ? `${currentUser.value.first_name} ${currentUser.value.last_name}` : 'Korisnik')
+const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
 
 function toggleTheme() {
   const newTheme = isDark.value ? 'unipuTheme' : 'unipuDark'
@@ -50,7 +51,8 @@ onMounted(() => {
       <nav class="header-navigation" aria-label="Glavna navigacija">
         <RouterLink class="nav-link" to="/">Početna</RouterLink>
         <RouterLink class="nav-link" to="/glavni-obrazac">Glavni obrazac</RouterLink>
-        <span class="nav-link">{{ userName }}</span>
+        <RouterLink v-if="isAdmin" class="nav-link" to="/administracija/korisnici">{{ userName }}</RouterLink>
+        <span v-else class="nav-link user-name">{{ userName }}</span>
         <button class="logout-button" type="button" @click="logout">Odjava</button>
         <button
           class="theme-toggle"
@@ -103,6 +105,14 @@ onMounted(() => {
 
 .nav-link:hover {
   color: rgb(var(--v-theme-primary));
+}
+
+.user-name {
+  cursor: default;
+}
+
+.user-name:hover {
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .logout-button {

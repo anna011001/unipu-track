@@ -202,7 +202,7 @@ onMounted(() => {
         <p v-if="success" class="login-success" role="status">{{ success }}</p>
 
         <button class="submit-button" type="submit" :disabled="submitting || Boolean(success)">
-          {{ submitting ? 'Slanje...' : success ? 'Zahtjev je poslan' : 'Pošalji zahtjev' }}
+          {{ submitting ? 'Registracija...' : success ? 'Registracija uspješna' : 'Registriraj se' }}
         </button>
         <button class="secondary-button" type="button" @click="changeMode('login')">Natrag na prijavu</button>
       </form>

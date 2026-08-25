@@ -32,8 +32,8 @@ import StakeholdersView from '../views/StakeholdersView.vue'
 import JointEventsView from '../views/JointEventsView.vue'
 import FacultyReportView from '../views/FacultyReportView.vue'
 import LoginView from '../views/LoginView.vue'
-import RegistrationApprovalView from '../views/RegistrationApprovalView.vue'
-import { isAuthenticated } from '../services/auth.js'
+import AuthorizedEmailsView from '../views/AuthorizedEmailsView.vue'
+import { currentUser, isAuthenticated } from '../services/auth.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,12 +43,6 @@ const router = createRouter({
       name: 'login',
       component: LoginView,
       meta: { public: true },
-    },
-    {
-      path: '/odobrenje-registracije',
-      name: 'registration-approval',
-      component: RegistrationApprovalView,
-      meta: { public: true, allowAuthenticated: true },
     },
     {
       path: '/',
@@ -211,6 +205,12 @@ const router = createRouter({
       component: FacultyReportView,
     },
     {
+      path: '/administracija/korisnici',
+      name: 'authorized-emails',
+      component: AuthorizedEmailsView,
+      meta: { admin: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
@@ -226,6 +226,8 @@ router.beforeEach((to) => {
       query: { redirect: to.fullPath },
     }
   }
+
+  if (to.meta.admin && currentUser.value?.role !== 'ADMIN') return { name: 'home' }
 
   return true
 })

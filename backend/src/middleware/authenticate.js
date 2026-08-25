@@ -31,6 +31,14 @@ export function authenticate(req, res, next) {
   }
 }
 
+export function requireAdmin(req, res, next) {
+  if (req.authenticatedUser?.role !== "ADMIN") {
+    return res.status(403).json({ message: "Ova radnja dostupna je samo administratoru." });
+  }
+
+  return next();
+}
+
 export function createToken(user) {
   return jwt.sign(
     {

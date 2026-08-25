@@ -23,19 +23,17 @@ CREATE TABLE users (
     last_name           VARCHAR(80) NOT NULL,
     role                VARCHAR(10) NOT NULL DEFAULT 'PROFESSOR'
                         CHECK (role IN ('PROFESSOR', 'ADMIN')),
-    is_active           BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at       TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE user_registration_approvals (
-    id              INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id         INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    token_hash      VARCHAR(64) NOT NULL UNIQUE,
-    expires_at      TIMESTAMPTZ NOT NULL,
-    approved_at     TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE authorized_user_emails (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email               CITEXT NOT NULL UNIQUE,
+    added_by_user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE staff_members (
