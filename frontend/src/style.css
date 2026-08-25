@@ -40,7 +40,6 @@ a {
   text-decoration: none;
 }
 
-/* Zajednička osnova stranica za dodavanje zapisa. */
 .new-view {
   min-height: calc(100vh - 112px);
   padding: 34px clamp(32px, 5vw, 128px) 90px;
@@ -84,7 +83,6 @@ a {
   }
 }
 
-/* Poravnanje brojača uz odabir izvještajnog razdoblja */
 .view > .overview:has(> strong),
 .events-view > .overview:has(> strong) {
   align-items: flex-end;

@@ -118,6 +118,13 @@ function getRecordRoute(record) {
     }
   }
 
+  if (record.record_type === 'FACULTY_REPORTS') {
+    return {
+      name: 'faculty-report',
+      query: { id: record.record_id },
+    }
+  }
+
   if (record.record_type === 'HELD_JOINT_EVENTS') {
     return {
       name: 'joint-events',

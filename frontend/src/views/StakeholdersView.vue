@@ -269,7 +269,7 @@ async function syncSummary() {
     if (index >= 0) summaries.value[index] = response.data
     else summaries.value.push(response.data)
   } catch {
-    /* Prikazani sažetak i dalje se računa iz stvarnih zapisa. */
+    return undefined
   }
 }
 async function save(type) {

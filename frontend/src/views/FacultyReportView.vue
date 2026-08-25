@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../services/api.js'
 import EditableReportTable from '../components/EditableReportTable.vue'
 import ReadOnlyEvidenceTable from '../components/ReadOnlyEvidenceTable.vue'
@@ -7,6 +8,7 @@ import { allTableConfigs, linkedEvidence, reportSections } from '../data/faculty
 import { currentUser } from '../services/auth.js'
 
 const userId = Number(currentUser.value?.id)
+const route = useRoute()
 const periods = ref([])
 const units = ref([])
 const reports = ref([])
@@ -249,13 +251,18 @@ async function load() {
     units.value = unitResponse.data
     reports.value = reportResponse.data
     const savedState = readViewState()
+    const requestedReport = reports.value.find((item) => Number(item.id) === Number(route.query.id))
     savedScrollY = savedState.scrollY
-    periodId.value = periods.value.some((item) => Number(item.id) === Number(savedState.periodId))
-      ? Number(savedState.periodId)
-      : (periods.value[0]?.id ?? null)
-    unitId.value = units.value.some((item) => Number(item.id) === Number(savedState.unitId))
-      ? Number(savedState.unitId)
-      : (units.value[0]?.id ?? null)
+    periodId.value = requestedReport
+      ? Number(requestedReport.reporting_period_id)
+      : periods.value.some((item) => Number(item.id) === Number(savedState.periodId))
+        ? Number(savedState.periodId)
+        : (periods.value[0]?.id ?? null)
+    unitId.value = requestedReport
+      ? Number(requestedReport.organizational_unit_id)
+      : units.value.some((item) => Number(item.id) === Number(savedState.unitId))
+        ? Number(savedState.unitId)
+        : (units.value[0]?.id ?? null)
     await chooseReport()
   } catch (exception) {
     error.value = apiError(exception, 'Glavni obrazac nije moguće učitati.')

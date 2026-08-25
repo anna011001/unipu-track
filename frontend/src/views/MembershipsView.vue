@@ -255,7 +255,7 @@ async function refreshMembershipSummaries() {
     const response = await api.get('/api/memberships/summary')
     membershipSummaries.value = Array.isArray(response.data) ? response.data : []
   } catch {
-    // Uređeni zapis ostaje spremljen i ako ponovno učitavanje sažetka ne uspije.
+    return undefined
   }
 }
 

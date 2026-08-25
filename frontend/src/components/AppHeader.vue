@@ -25,7 +25,7 @@ async function loadCurrentUser() {
     const response = await api.get('/api/auth/me')
     updateCurrentUser(response.data)
   } catch {
-    // Neuspjelu sesiju obrađuje Axios interceptor.
+    return undefined
   }
 }
 

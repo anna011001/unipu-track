@@ -1245,7 +1245,6 @@ button:disabled {
   }
 }
 
-/* Zapisi su oblikovani poput žutih kartica s detaljima na ostalim stranicama. */
 .record {
   gap: 22px 26px;
   padding: clamp(28px, 3vw, 46px);
