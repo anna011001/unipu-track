@@ -24,7 +24,9 @@ async function loadCurrentUser() {
   try {
     const response = await api.get('/api/auth/me')
     updateCurrentUser(response.data)
-  } catch {}
+  } catch {
+    // Neuspjelu sesiju obrađuje Axios interceptor.
+  }
 }
 
 async function logout() {

@@ -128,11 +128,6 @@ function getStaffName(development) {
   return `${development.staff_first_name || ''} ${development.staff_last_name || ''}`.trim() || '—'
 }
 
-function getStaffMemberName(id) {
-  const member = staffMembers.value.find((item) => Number(item.id) === Number(id))
-  return member ? `${member.first_name} ${member.last_name}` : '—'
-}
-
 function getAcademicTitle(id) {
   return (
     staffMembers.value.find((member) => Number(member.id) === Number(id))?.academic_title || '—'

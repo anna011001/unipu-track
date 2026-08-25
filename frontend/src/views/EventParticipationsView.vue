@@ -99,10 +99,6 @@ function dateInput(value) {
 function staffName(record) {
   return `${record.staff_first_name || ''} ${record.staff_last_name || ''}`.trim() || '—'
 }
-function selectedStaffName(id) {
-  const member = staff.value.find((item) => Number(item.id) === Number(id))
-  return member ? `${member.first_name} ${member.last_name}` : '—'
-}
 function academicTitle(id) {
   return staff.value.find((item) => Number(item.id) === Number(id))?.academic_title || '—'
 }
