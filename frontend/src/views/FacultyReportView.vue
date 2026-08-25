@@ -559,9 +559,6 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 .report-toolbar {
-  position: sticky;
-  top: 112px;
-  z-index: 5;
   display: flex;
   align-items: flex-end;
   gap: 18px;
