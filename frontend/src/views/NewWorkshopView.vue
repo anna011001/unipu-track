@@ -1,5 +1,7 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';import { useRouter } from 'vue-router';import api from '../services/api.js'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '../services/api.js'
 const router=useRouter(),userId=1;const periods=ref([]),units=ref([]),detail=ref(null),media=ref(null),file=ref(null),fileInput=ref(null),loading=ref(true),saving=ref(false),saved=ref(false),errors=ref([]),success=ref('')
 const form=reactive({reporting_period_id:null,workshop_name:'',workshop_leaders:'',organizational_unit_id:null,target_group:'',participant_count:'',location:'',held_on:'',duration_hours:'',content_description:'',media_link:'',notes:''})
 const groups=[{value:'STUDENTS',label:'Studenti'},{value:'TEACHERS',label:'Nastavnici'},{value:'PUBLIC',label:'Javnost'},{value:'EMPLOYEES',label:'Zaposlenici'},{value:'DOCTORAL_STUDENTS',label:'Doktorandi'}]

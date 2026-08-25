@@ -1,39 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import MembershipsView from '../views/MembershipsView.vue'
-import NewMembershipView from '../views/NewMembershipView.vue'
-import NewProfessionalDevelopmentView from '../views/NewProfessionalDevelopmentView.vue'
-import ProfessionalDevelopmentsView from '../views/ProfessionalDevelopmentsView.vue'
-import ResearchDevelopmentView from '../views/ResearchDevelopmentView.vue'
-import EventParticipationsView from '../views/EventParticipationsView.vue'
-import NewEventParticipationView from '../views/NewEventParticipationView.vue'
-import WorkshopsView from '../views/WorkshopsView.vue'
-import NewWorkshopView from '../views/NewWorkshopView.vue'
-import CoauthorshipsView from '../views/CoauthorshipsView.vue'
-import NewCoauthoredPaperView from '../views/NewCoauthoredPaperView.vue'
-import ProjectApplicationsView from '../views/ProjectApplicationsView.vue'
-import NewProjectApplicationView from '../views/NewProjectApplicationView.vue'
-import InternationalCooperationView from '../views/InternationalCooperationView.vue'
-import VisitingResearchersView from '../views/VisitingResearchersView.vue'
-import NewVisitingResearcherView from '../views/NewVisitingResearcherView.vue'
-import InternationalConferencesView from '../views/InternationalConferencesView.vue'
-import NewInternationalConferenceView from '../views/NewInternationalConferenceView.vue'
-import StaffMobilitiesView from '../views/StaffMobilitiesView.vue'
-import NewStaffMobilityView from '../views/NewStaffMobilityView.vue'
-import InternationalPartnershipsView from '../views/InternationalPartnershipsView.vue'
-import NewInternationalPartnershipView from '../views/NewInternationalPartnershipView.vue'
-import TeachingQualityView from '../views/TeachingQualityView.vue'
-import ScheduleOptimizationsView from '../views/ScheduleOptimizationsView.vue'
-import ScheduleAdjustmentsView from '../views/ScheduleAdjustmentsView.vue'
-import SurveyActionPlansView from '../views/SurveyActionPlansView.vue'
-import SabbaticalsView from '../views/SabbaticalsView.vue'
-import CooperationEventsView from '../views/CooperationEventsView.vue'
-import StakeholdersView from '../views/StakeholdersView.vue'
-import JointEventsView from '../views/JointEventsView.vue'
-import FacultyReportView from '../views/FacultyReportView.vue'
 import LoginView from '../views/LoginView.vue'
-import AuthorizedEmailsView from '../views/AuthorizedEmailsView.vue'
-import ProfileView from '../views/ProfileView.vue'
 import { currentUser, isAuthenticated } from '../services/auth.js'
 
 const router = createRouter({
@@ -53,168 +20,168 @@ const router = createRouter({
     {
       path: '/istrazivanje-i-razvoj',
       name: 'research-development',
-      component: ResearchDevelopmentView,
+      component: () => import('../views/ResearchDevelopmentView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/clanstva',
       name: 'memberships',
-      component: MembershipsView,
+      component: () => import('../views/MembershipsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/clanstva/novo',
       name: 'new-membership',
-      component: NewMembershipView,
+      component: () => import('../views/NewMembershipView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/strucna-usavrsavanja',
       name: 'professional-developments',
-      component: ProfessionalDevelopmentsView,
+      component: () => import('../views/ProfessionalDevelopmentsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/strucna-usavrsavanja/novo',
       name: 'new-professional-development',
-      component: NewProfessionalDevelopmentView,
+      component: () => import('../views/NewProfessionalDevelopmentView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/sudjelovanja',
       name: 'event-participations',
-      component: EventParticipationsView,
+      component: () => import('../views/EventParticipationsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/sudjelovanja/novo',
       name: 'new-event-participation',
-      component: NewEventParticipationView,
+      component: () => import('../views/NewEventParticipationView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/radionice',
       name: 'workshops',
-      component: WorkshopsView,
+      component: () => import('../views/WorkshopsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/radionice/novo',
       name: 'new-workshop',
-      component: NewWorkshopView,
+      component: () => import('../views/NewWorkshopView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/koautorstva',
       name: 'coauthorships',
-      component: CoauthorshipsView,
+      component: () => import('../views/CoauthorshipsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/koautorstva/novo',
       name: 'new-coauthored-paper',
-      component: NewCoauthoredPaperView,
+      component: () => import('../views/NewCoauthoredPaperView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/projektne-prijave',
       name: 'project-applications',
-      component: ProjectApplicationsView,
+      component: () => import('../views/ProjectApplicationsView.vue'),
     },
     {
       path: '/istrazivanje-i-razvoj/projektne-prijave/nova',
       name: 'new-project-application',
-      component: NewProjectApplicationView,
+      component: () => import('../views/NewProjectApplicationView.vue'),
     },
     {
       path: '/medunarodna-suradnja',
       name: 'international-cooperation',
-      component: InternationalCooperationView,
+      component: () => import('../views/InternationalCooperationView.vue'),
     },
     {
       path: '/medunarodna-suradnja/gostujuci-istrazivaci',
       name: 'visiting-researchers',
-      component: VisitingResearchersView,
+      component: () => import('../views/VisitingResearchersView.vue'),
     },
     {
       path: '/medunarodna-suradnja/gostujuci-istrazivaci/novo',
       name: 'new-visiting-researcher',
-      component: NewVisitingResearcherView,
+      component: () => import('../views/NewVisitingResearcherView.vue'),
     },
     {
       path: '/medunarodna-suradnja/medunarodne-konferencije',
       name: 'international-conferences',
-      component: InternationalConferencesView,
+      component: () => import('../views/InternationalConferencesView.vue'),
     },
     {
       path: '/medunarodna-suradnja/medunarodne-konferencije/nova',
       name: 'new-international-conference',
-      component: NewInternationalConferenceView,
+      component: () => import('../views/NewInternationalConferenceView.vue'),
     },
     {
       path: '/medunarodna-suradnja/mobilnost-osoblja',
       name: 'staff-mobilities',
-      component: StaffMobilitiesView,
+      component: () => import('../views/StaffMobilitiesView.vue'),
     },
     {
       path: '/medunarodna-suradnja/mobilnost-osoblja/nova',
       name: 'new-staff-mobility',
-      component: NewStaffMobilityView,
+      component: () => import('../views/NewStaffMobilityView.vue'),
     },
     {
       path: '/medunarodna-suradnja/partnerstva',
       name: 'international-partnerships',
-      component: InternationalPartnershipsView,
+      component: () => import('../views/InternationalPartnershipsView.vue'),
     },
     {
       path: '/medunarodna-suradnja/partnerstva/novo',
       name: 'new-international-partnership',
-      component: NewInternationalPartnershipView,
+      component: () => import('../views/NewInternationalPartnershipView.vue'),
     },
     {
       path: '/nastava-i-kvaliteta',
       name: 'teaching-quality',
-      component: TeachingQualityView,
+      component: () => import('../views/TeachingQualityView.vue'),
     },
     {
       path: '/nastava-i-kvaliteta/optimizacija-rasporeda',
       name: 'schedule-optimizations',
-      component: ScheduleOptimizationsView,
+      component: () => import('../views/ScheduleOptimizationsView.vue'),
     },
     {
       path: '/nastava-i-kvaliteta/prilagodbe-rasporeda',
       name: 'schedule-adjustments',
-      component: ScheduleAdjustmentsView,
+      component: () => import('../views/ScheduleAdjustmentsView.vue'),
     },
     {
       path: '/nastava-i-kvaliteta/mjere-prema-studentskim-anketama',
       name: 'survey-action-plans',
-      component: SurveyActionPlansView,
+      component: () => import('../views/SurveyActionPlansView.vue'),
     },
     {
       path: '/nastava-i-kvaliteta/znanstvena-produktivnost',
       name: 'sabbaticals',
-      component: SabbaticalsView,
+      component: () => import('../views/SabbaticalsView.vue'),
     },
     {
       path: '/suradnja-i-dogadanja',
       name: 'cooperation-events',
-      component: CooperationEventsView,
+      component: () => import('../views/CooperationEventsView.vue'),
     },
     {
       path: '/suradnja-i-dogadanja/dionici',
       name: 'stakeholders',
-      component: StakeholdersView,
+      component: () => import('../views/StakeholdersView.vue'),
     },
     {
       path: '/suradnja-i-dogadanja/zajednicka-dogadanja',
       name: 'joint-events',
-      component: JointEventsView,
+      component: () => import('../views/JointEventsView.vue'),
     },
     {
       path: '/glavni-obrazac',
       name: 'faculty-report',
-      component: FacultyReportView,
+      component: () => import('../views/FacultyReportView.vue'),
     },
     {
       path: '/administracija/korisnici',
       name: 'authorized-emails',
-      component: AuthorizedEmailsView,
+      component: () => import('../views/AuthorizedEmailsView.vue'),
       meta: { admin: true },
     },
     {
       path: '/profil',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('../views/ProfileView.vue'),
     },
     {
       path: '/:pathMatch(.*)*',
