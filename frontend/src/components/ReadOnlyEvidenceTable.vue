@@ -9,9 +9,18 @@ const props = defineProps({
 })
 
 const technicalFields = new Set([
-  'id', 'created_at', 'updated_at', 'created_by', 'updated_by',
-  'reporting_period_id', 'organizational_unit_id', 'staff_member_id',
-  'country_id', 'organization_id', 'host_organization_id', 'record_file_id',
+  'id',
+  'created_at',
+  'updated_at',
+  'created_by',
+  'updated_by',
+  'reporting_period_id',
+  'organizational_unit_id',
+  'staff_member_id',
+  'country_id',
+  'organization_id',
+  'host_organization_id',
+  'record_file_id',
 ])
 
 const shownColumns = computed(() => {
@@ -40,7 +49,9 @@ function display(value) {
   <section class="evidence-table-block">
     <div class="evidence-heading">
       <h4>{{ title }}</h4>
-      <RouterLink class="source-link no-print" :to="route" target="_blank" rel="noopener">Otvori evidenciju</RouterLink>
+      <RouterLink class="source-link no-print" :to="route" target="_blank" rel="noopener"
+        >Otvori evidenciju</RouterLink
+      >
     </div>
     <div class="evidence-table-wrap">
       <table>
@@ -56,7 +67,9 @@ function display(value) {
           </tr>
           <tr v-for="(record, index) in records" v-else :key="record.id || index">
             <td>{{ index + 1 }}</td>
-            <td v-for="column in shownColumns" :key="column.key">{{ display(record[column.key]) }}</td>
+            <td v-for="column in shownColumns" :key="column.key">
+              {{ display(record[column.key]) }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -65,23 +78,94 @@ function display(value) {
 </template>
 
 <style scoped>
-.evidence-table-block { margin-top: 22px; break-inside: avoid; }
-.evidence-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
-h4 { margin: 0; font-size: 1.05rem; font-weight: 500; }
-.source-link { color: rgb(var(--v-theme-evidence-link)); text-decoration: underline; }
-.evidence-table-wrap { overflow-x: auto; border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 9px; }
-table { width: 100%; min-width: 720px; border-collapse: collapse; background: rgb(var(--v-theme-surface)); }
-th, td { padding: 10px 12px; border-right: 1px solid rgb(var(--v-theme-table-border)); border-bottom: 1px solid rgb(var(--v-theme-table-border)); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th:last-child, td:last-child { border-right: 0; }
-tbody tr:last-child td { border-bottom: 0; }
-th { border-color: rgb(var(--v-theme-table-header-border)); background: rgb(var(--v-theme-category-card)); color: rgb(var(--v-theme-on-category-card)); white-space: nowrap; overflow-wrap: normal; }
-.empty { padding: 22px; color: rgb(var(--v-theme-muted)); text-align: center; }
+.evidence-table-block {
+  margin-top: 22px;
+  break-inside: avoid;
+}
+.evidence-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+.source-link {
+  color: rgb(var(--v-theme-evidence-link));
+  text-decoration: underline;
+}
+.evidence-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 9px;
+}
+table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  background: rgb(var(--v-theme-surface));
+}
+th,
+td {
+  padding: 10px 12px;
+  border-right: 1px solid rgb(var(--v-theme-table-border));
+  border-bottom: 1px solid rgb(var(--v-theme-table-border));
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+th:last-child,
+td:last-child {
+  border-right: 0;
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+th {
+  border-color: rgb(var(--v-theme-table-header-border));
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.empty {
+  padding: 22px;
+  color: rgb(var(--v-theme-muted));
+  text-align: center;
+}
 @media print {
-  .no-print { display: none !important; }
-  .evidence-table-block { margin-top: 5mm; }
-  .evidence-table-wrap { overflow: visible; border-radius: 0; border-color: #aaa; }
-  table { min-width: 0; table-layout: fixed; font-size: 8pt; }
-  th, td { padding: 4px 5px; border-color: #bbb; }
-  th { background: #eee !important; color: #111 !important; white-space: normal; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print {
+    display: none !important;
+  }
+  .evidence-table-block {
+    margin-top: 5mm;
+  }
+  .evidence-table-wrap {
+    overflow: visible;
+    border-radius: 0;
+    border-color: #aaa;
+  }
+  table {
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 8pt;
+  }
+  th,
+  td {
+    padding: 4px 5px;
+    border-color: #bbb;
+  }
+  th {
+    background: #eee !important;
+    color: #111 !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 </style>

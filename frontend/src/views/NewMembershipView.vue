@@ -308,17 +308,24 @@ async function loadOptions() {
   errorMessages.value = []
 
   try {
-    const [periodsResponse, organizationsResponse, countriesResponse, staffResponse, unitsResponse] =
-      await Promise.all([
-        api.get('/api/reporting-periods'),
-        api.get('/api/organizations'),
-        api.get('/api/countries'),
-        api.get('/api/staff-members'),
-        api.get('/api/organizational-units'),
-      ])
+    const [
+      periodsResponse,
+      organizationsResponse,
+      countriesResponse,
+      staffResponse,
+      unitsResponse,
+    ] = await Promise.all([
+      api.get('/api/reporting-periods'),
+      api.get('/api/organizations'),
+      api.get('/api/countries'),
+      api.get('/api/staff-members'),
+      api.get('/api/organizational-units'),
+    ])
 
     const reportingPeriods = Array.isArray(periodsResponse.data) ? periodsResponse.data : []
-    organizations.value = Array.isArray(organizationsResponse.data) ? organizationsResponse.data : []
+    organizations.value = Array.isArray(organizationsResponse.data)
+      ? organizationsResponse.data
+      : []
     countries.value = Array.isArray(countriesResponse.data) ? countriesResponse.data : []
     staffMembers.value = Array.isArray(staffResponse.data) ? staffResponse.data : []
     organizationalUnits.value = Array.isArray(unitsResponse.data) ? unitsResponse.data : []
@@ -443,7 +450,12 @@ onUnmounted(clearSuccessMessage)
 
           <label class="form-field pill-field">
             <span>Država sjedišta</span>
-            <CountryAutocomplete v-model="form.headquarters_country_id" :countries="countries" :disabled="saved" placeholder="Nije odabrano" />
+            <CountryAutocomplete
+              v-model="form.headquarters_country_id"
+              :countries="countries"
+              :disabled="saved"
+              placeholder="Nije odabrano"
+            />
           </label>
 
           <label class="form-field country-style-select">
@@ -470,7 +482,6 @@ onUnmounted(clearSuccessMessage)
               :disabled="saved"
             />
           </label>
-
         </div>
 
         <div class="checkbox-options">
@@ -535,7 +546,9 @@ onUnmounted(clearSuccessMessage)
             placeholder="https://poveznica-na-dokaz.hr"
             :disabled="saved"
           />
-          <small>Poveznica ili datoteka. Ako unesete oboje, spremljena datoteka ima prednost.</small>
+          <small
+            >Poveznica ili datoteka. Ako unesete oboje, spremljena datoteka ima prednost.</small
+          >
           <div class="file-picker">
             <input
               ref="fileInput"
@@ -583,19 +596,18 @@ onUnmounted(clearSuccessMessage)
       </div>
 
       <div class="bottom-actions">
-        <button type="button" class="back-button" @click="router.push('/istrazivanje-i-razvoj/clanstva')">
+        <button
+          type="button"
+          class="back-button"
+          @click="router.push('/istrazivanje-i-razvoj/clanstva')"
+        >
           Natrag
         </button>
       </div>
     </form>
 
     <Transition name="snackbar">
-      <div
-        v-if="successMessage"
-        class="success-snackbar"
-        role="status"
-        aria-live="polite"
-      >
+      <div v-if="successMessage" class="success-snackbar" role="status" aria-live="polite">
         {{ successMessage }}
       </div>
     </Transition>
@@ -685,7 +697,9 @@ h1 {
 
 .snackbar-enter-active,
 .snackbar-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .snackbar-enter-from,
@@ -882,7 +896,9 @@ h1 {
   color: rgb(var(--v-theme-on-surface));
   cursor: pointer;
   font: inherit;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 .file-button:hover:not(:disabled),

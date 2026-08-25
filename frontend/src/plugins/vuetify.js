@@ -1,11 +1,6 @@
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
-import {
-  VApp,
-  VAppBar,
-  VAutocomplete,
-  VMain,
-} from 'vuetify/components'
+import { VApp, VAppBar, VAutocomplete, VMain } from 'vuetify/components'
 
 const components = {
   VApp,

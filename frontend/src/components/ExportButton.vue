@@ -35,7 +35,9 @@ function exportRecords() {
 </script>
 
 <template>
-  <button class="export-button" type="button" :disabled="!records.length" @click="exportRecords">Izvoz</button>
+  <button class="export-button" type="button" :disabled="!records.length" @click="exportRecords">
+    Izvoz
+  </button>
 </template>
 
 <style scoped>
@@ -51,13 +53,31 @@ function exportRecords() {
   font: inherit;
   cursor: pointer;
 }
-.export-button:hover:not(:disabled) { background: rgba(var(--v-theme-primary), .1); }
-.export-button:disabled { opacity: .45; cursor: default; }
-:global(.export-row) { display: flex; align-items: flex-end; gap: 24px; }
-:global(.export-row > .delete-report) { margin-left: auto; }
-:global(.export-row > .delete-report + .export-button) { margin-left: 0; }
+.export-button:hover:not(:disabled) {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+.export-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+:global(.export-row) {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+:global(.export-row > .delete-report) {
+  margin-left: auto;
+}
+:global(.export-row > .delete-report + .export-button) {
+  margin-left: 0;
+}
 @media (max-width: 650px) {
-  .export-button { margin-left: 0; }
-  :global(.export-row) { align-items: stretch; flex-direction: column; }
+  .export-button {
+    margin-left: 0;
+  }
+  :global(.export-row) {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

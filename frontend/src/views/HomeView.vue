@@ -149,24 +149,27 @@ function getCategory(recordType) {
   const type = recordType || ''
 
   if (
-    ['MEMBERSHIP', 'PROFESSIONAL_DEVELOPMENT', 'EVENT_PARTICIPATION', 'WORKSHOP', 'COAUTHOR', 'PROJECT'].some(
-      (part) => type.includes(part),
-    )
+    [
+      'MEMBERSHIP',
+      'PROFESSIONAL_DEVELOPMENT',
+      'EVENT_PARTICIPATION',
+      'WORKSHOP',
+      'COAUTHOR',
+      'PROJECT',
+    ].some((part) => type.includes(part))
   ) {
     return 'Istraživanje i razvoj'
   }
 
   if (
-    ['VISITING_RESEARCHER', 'INTERNATIONAL_CONFERENCE', 'INTERNATIONAL_COOPERATION'].some(
-      (part) => type.includes(part),
+    ['VISITING_RESEARCHER', 'INTERNATIONAL_CONFERENCE', 'INTERNATIONAL_COOPERATION'].some((part) =>
+      type.includes(part),
     )
   ) {
     return 'Međunarodna suradnja'
   }
 
-  if (
-    ['SCHEDULE', 'SABBATICAL', 'SURVEY_ACTION_PLAN'].some((part) => type.includes(part))
-  ) {
+  if (['SCHEDULE', 'SABBATICAL', 'SURVEY_ACTION_PLAN'].some((part) => type.includes(part))) {
     return 'Nastava i kvaliteta'
   }
 
@@ -256,7 +259,9 @@ onMounted(loadRecentRecords)
 
         <p v-if="loading" class="table-message">Učitavanje...</p>
         <p v-else-if="errorMessage" class="table-message table-error">{{ errorMessage }}</p>
-        <p v-else-if="!recentRecords.length" class="table-message">Nema nedavno uređivanih zapisa.</p>
+        <p v-else-if="!recentRecords.length" class="table-message">
+          Nema nedavno uređivanih zapisa.
+        </p>
       </div>
     </section>
 
@@ -395,7 +400,9 @@ onMounted(loadRecentRecords)
   line-height: 1.6;
   text-align: center;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .category-card:hover {

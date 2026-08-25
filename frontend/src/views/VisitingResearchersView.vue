@@ -3,9 +3,10 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
 import ExportButton from '../components/ExportButton.vue'
+import { currentUser } from '../services/auth.js'
 
 const route = useRoute()
-const userId = 1
+const userId = Number(currentUser.value?.id)
 const perPage = 10
 
 const periods = ref([])
@@ -64,14 +65,26 @@ const plannedFields = [
   { key: 'notes', label: 'Napomena', kind: 'textarea' },
 ]
 
-const periodRealized = computed(() => realized.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)))
-const periodPlanned = computed(() => planned.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)))
-const periodAnalyses = computed(() => analyses.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)))
+const periodRealized = computed(() =>
+  realized.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)),
+)
+const periodPlanned = computed(() =>
+  planned.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)),
+)
+const periodAnalyses = computed(() =>
+  analyses.value.filter((item) => Number(item.reporting_period_id) === Number(periodId.value)),
+)
 const realizedPages = computed(() => Math.ceil(periodRealized.value.length / perPage))
 const plannedPages = computed(() => Math.ceil(periodPlanned.value.length / perPage))
-const shownRealized = computed(() => periodRealized.value.slice((realizedPage.value - 1) * perPage, realizedPage.value * perPage))
-const shownPlanned = computed(() => periodPlanned.value.slice((plannedPage.value - 1) * perPage, plannedPage.value * perPage))
-const selectedFields = computed(() => selectedType.value === 'realized' ? realizedFields : plannedFields)
+const shownRealized = computed(() =>
+  periodRealized.value.slice((realizedPage.value - 1) * perPage, realizedPage.value * perPage),
+)
+const shownPlanned = computed(() =>
+  periodPlanned.value.slice((plannedPage.value - 1) * perPage, plannedPage.value * perPage),
+)
+const selectedFields = computed(() =>
+  selectedType.value === 'realized' ? realizedFields : plannedFields,
+)
 
 function display(value) {
   return value === null || value === undefined || value === '' ? '—' : value
@@ -121,7 +134,9 @@ function apiError(exception, fallback) {
 function toast(message) {
   success.value = message
   if (snackbarTimer) clearTimeout(snackbarTimer)
-  snackbarTimer = setTimeout(() => { success.value = '' }, 4000)
+  snackbarTimer = setTimeout(() => {
+    success.value = ''
+  }, 4000)
 }
 
 async function refreshAnalyses() {
@@ -137,10 +152,14 @@ function choose(type, item) {
 }
 
 function startEdit() {
-  form.value = Object.fromEntries(selectedFields.value.map((field) => [
-    field.key,
-    field.kind === 'date' ? dateInput(selected.value[field.key]) : selected.value[field.key] ?? '',
-  ]))
+  form.value = Object.fromEntries(
+    selectedFields.value.map((field) => [
+      field.key,
+      field.kind === 'date'
+        ? dateInput(selected.value[field.key])
+        : (selected.value[field.key] ?? ''),
+    ]),
+  )
 }
 
 function cancelEdit() {
@@ -152,7 +171,8 @@ function payload() {
   const result = { updated_by: userId }
   for (const field of selectedFields.value) {
     if (field.required) result[field.key] = String(form.value[field.key] ?? '').trim()
-    else if (field.kind === 'country' || field.kind === 'unit' || field.kind === 'number') result[field.key] = optionalId(form.value[field.key])
+    else if (field.kind === 'country' || field.kind === 'unit' || field.kind === 'number')
+      result[field.key] = optionalId(form.value[field.key])
     else if (field.kind === 'date') result[field.key] = form.value[field.key] || null
     else result[field.key] = optionalText(form.value[field.key])
   }
@@ -167,7 +187,10 @@ async function save() {
   }
   saving.value = true
   try {
-    const response = await api.patch(`/api/visiting-researchers/${selectedType.value}/${selected.value.id}`, payload())
+    const response = await api.patch(
+      `/api/visiting-researchers/${selectedType.value}/${selected.value.id}`,
+      payload(),
+    )
     const collection = selectedType.value === 'realized' ? realized : planned
     const updated = { ...selected.value, ...response.data }
     const index = collection.value.findIndex((item) => item.id === updated.id)
@@ -175,7 +198,11 @@ async function save() {
     selected.value = updated
     if (selectedType.value === 'realized') await refreshAnalyses()
     form.value = null
-    toast(selectedType.value === 'realized' ? 'Realizirano gostovanje uspješno je izmijenjeno.' : 'Planirano gostovanje uspješno je izmijenjeno.')
+    toast(
+      selectedType.value === 'realized'
+        ? 'Realizirano gostovanje uspješno je izmijenjeno.'
+        : 'Planirano gostovanje uspješno je izmijenjeno.',
+    )
   } catch (exception) {
     editError.value = apiError(exception, 'Gostovanje nije moguće izmijeniti.')
   } finally {
@@ -184,7 +211,8 @@ async function save() {
 }
 
 async function remove() {
-  if (!confirm(`Želite li izbrisati gostovanje istraživača „${selected.value.researcher_name}”?`)) return
+  if (!confirm(`Želite li izbrisati gostovanje istraživača „${selected.value.researcher_name}”?`))
+    return
   deleting.value = true
   try {
     await api.delete(`/api/visiting-researchers/${selectedType.value}/${selected.value.id}`)
@@ -210,8 +238,12 @@ async function openFromRoute() {
   if (!item) return
   periodId.value = item.reporting_period_id
   await nextTick()
-  if (type === 'realized') realizedPage.value = Math.floor(periodRealized.value.findIndex((entry) => entry.id === id) / perPage) + 1
-  else plannedPage.value = Math.floor(periodPlanned.value.findIndex((entry) => entry.id === id) / perPage) + 1
+  if (type === 'realized')
+    realizedPage.value =
+      Math.floor(periodRealized.value.findIndex((entry) => entry.id === id) / perPage) + 1
+  else
+    plannedPage.value =
+      Math.floor(periodPlanned.value.findIndex((entry) => entry.id === id) / perPage) + 1
   choose(type, item)
   await nextTick()
   detailsCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -219,7 +251,14 @@ async function openFromRoute() {
 
 async function load() {
   try {
-    const [periodResponse, realizedResponse, plannedResponse, analysisResponse, countryResponse, unitResponse] = await Promise.all([
+    const [
+      periodResponse,
+      realizedResponse,
+      plannedResponse,
+      analysisResponse,
+      countryResponse,
+      unitResponse,
+    ] = await Promise.all([
       api.get('/api/reporting-periods'),
       api.get('/api/visiting-researchers/realized'),
       api.get('/api/visiting-researchers/planned'),
@@ -249,45 +288,470 @@ watch(periodId, () => {
   cancelEdit()
 })
 onMounted(load)
-onUnmounted(() => { if (snackbarTimer) clearTimeout(snackbarTimer) })
+onUnmounted(() => {
+  if (snackbarTimer) clearTimeout(snackbarTimer)
+})
 </script>
 
 <template>
   <main class="view">
-    <nav class="breadcrumbs"><RouterLink to="/medunarodna-suradnja">Međunarodna suradnja</RouterLink><span>›</span><span>Gostujući istraživači</span></nav>
+    <nav class="breadcrumbs">
+      <RouterLink to="/medunarodna-suradnja">Međunarodna suradnja</RouterLink><span>›</span
+      ><span>Gostujući istraživači</span>
+    </nav>
     <h1>Program međunarodnih gostujućih istraživača</h1>
 
     <p v-if="loading">Učitavanje...</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
       <section class="overview">
-        <label>Izvještajno razdoblje<select v-model.number="periodId"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.label }}</option></select></label>
+        <label
+          >Izvještajno razdoblje<select v-model.number="periodId">
+            <option v-for="period in periods" :key="period.id" :value="period.id">
+              {{ period.label }}
+            </option>
+          </select></label
+        >
         <strong>Ukupan broj realiziranih gostovanja: {{ periodRealized.length }}</strong>
-        <ExportButton :records="[...periodRealized.map((item) => ({ vrsta_zapisa: 'Realizirano gostovanje', ...item })), ...periodPlanned.map((item) => ({ vrsta_zapisa: 'Planirano gostovanje', ...item }))]" file-name="gostujuci-istrazivaci" />
+        <ExportButton
+          :records="[
+            ...periodRealized.map((item) => ({ vrsta_zapisa: 'Realizirano gostovanje', ...item })),
+            ...periodPlanned.map((item) => ({ vrsta_zapisa: 'Planirano gostovanje', ...item })),
+          ]"
+          file-name="gostujuci-istrazivaci"
+        />
       </section>
 
       <section class="records">
-        <header class="heading"><h2>Realizirana gostovanja ({{ periodRealized.length }})</h2><RouterLink class="action" :to="{ name: 'new-visiting-researcher', query: { type: 'realized' } }">Dodaj realizirano gostovanje</RouterLink></header>
+        <header class="heading">
+          <h2>Realizirana gostovanja ({{ periodRealized.length }})</h2>
+          <RouterLink
+            class="action"
+            :to="{ name: 'new-visiting-researcher', query: { type: 'realized' } }"
+            >Dodaj realizirano gostovanje</RouterLink
+          >
+        </header>
         <div v-if="periodRealized.length" class="list-grid">
-          <div><div class="list"><button v-for="item in shownRealized" :key="item.id" :class="{ selected: selectedType === 'realized' && selected?.id === item.id }" @click="choose('realized', item)"><strong>{{ item.researcher_name }}</strong><span>{{ date(item.arrival_date) }} – {{ date(item.departure_date) }}</span></button></div><div v-if="realizedPages > 1" class="pagination"><button v-for="number in realizedPages" :key="number" :class="{ active: realizedPage === number }" @click="realizedPage = number">{{ number }}</button></div></div>
-          <dl v-if="selected && selectedType === 'realized'" ref="detailsCard" class="details"><div class="actions"><button v-if="!form" class="action" @click="startEdit">Uredi</button><template v-else><button class="action" :disabled="saving || deleting" @click="save">{{ saving ? 'Spremanje...' : 'Spremi' }}</button><button class="action" :disabled="saving || deleting" @click="cancelEdit">Odustani</button><button class="square minus" :disabled="saving || deleting" @click="remove">−</button></template></div><p v-if="editError" class="error">{{ editError }}</p><div v-for="field in selectedFields" :key="field.key"><dt>{{ field.label }}</dt><dd><CountryAutocomplete v-if="form && field.kind === 'country'" v-model="form[field.key]" :countries="countries" class="input" placeholder="Nije odabrano" /><select v-else-if="form && field.kind === 'unit'" v-model="form[field.key]" class="input"><option value="">Nije odabrano</option><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select><textarea v-else-if="form && field.kind === 'textarea'" v-model="form[field.key]" class="input" rows="3"></textarea><input v-else-if="form" v-model="form[field.key]" class="input" :type="field.kind === 'date' ? 'date' : field.kind === 'number' ? 'number' : 'text'" :min="field.kind === 'number' ? 0 : undefined"><template v-else>{{ fieldValue(field) }}</template></dd></div></dl>
-        </div><p v-else>Nema realiziranih gostovanja.</p>
+          <div>
+            <div class="list">
+              <button
+                v-for="item in shownRealized"
+                :key="item.id"
+                :class="{ selected: selectedType === 'realized' && selected?.id === item.id }"
+                @click="choose('realized', item)"
+              >
+                <strong>{{ item.researcher_name }}</strong
+                ><span>{{ date(item.arrival_date) }} – {{ date(item.departure_date) }}</span>
+              </button>
+            </div>
+            <div v-if="realizedPages > 1" class="pagination">
+              <button
+                v-for="number in realizedPages"
+                :key="number"
+                :class="{ active: realizedPage === number }"
+                @click="realizedPage = number"
+              >
+                {{ number }}
+              </button>
+            </div>
+          </div>
+          <dl v-if="selected && selectedType === 'realized'" ref="detailsCard" class="details">
+            <div class="actions">
+              <button v-if="!form" class="action" @click="startEdit">Uredi</button
+              ><template v-else
+                ><button class="action" :disabled="saving || deleting" @click="save">
+                  {{ saving ? 'Spremanje...' : 'Spremi' }}</button
+                ><button class="action" :disabled="saving || deleting" @click="cancelEdit">
+                  Odustani</button
+                ><button class="square minus" :disabled="saving || deleting" @click="remove">
+                  −
+                </button></template
+              >
+            </div>
+            <p v-if="editError" class="error">{{ editError }}</p>
+            <div v-for="field in selectedFields" :key="field.key">
+              <dt>{{ field.label }}</dt>
+              <dd>
+                <CountryAutocomplete
+                  v-if="form && field.kind === 'country'"
+                  v-model="form[field.key]"
+                  :countries="countries"
+                  class="input"
+                  placeholder="Nije odabrano"
+                /><select
+                  v-else-if="form && field.kind === 'unit'"
+                  v-model="form[field.key]"
+                  class="input"
+                >
+                  <option value="">Nije odabrano</option>
+                  <option v-for="unit in units" :key="unit.id" :value="unit.id">
+                    {{ unit.short_name || unit.name }}
+                  </option></select
+                ><textarea
+                  v-else-if="form && field.kind === 'textarea'"
+                  v-model="form[field.key]"
+                  class="input"
+                  rows="3"
+                ></textarea
+                ><input
+                  v-else-if="form"
+                  v-model="form[field.key]"
+                  class="input"
+                  :type="
+                    field.kind === 'date' ? 'date' : field.kind === 'number' ? 'number' : 'text'
+                  "
+                  :min="field.kind === 'number' ? 0 : undefined"
+                /><template v-else>{{ fieldValue(field) }}</template>
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <p v-else>Nema realiziranih gostovanja.</p>
       </section>
 
       <section class="records">
-        <header class="heading"><h2>Planirana gostovanja ({{ periodPlanned.length }})</h2><RouterLink class="action" :to="{ name: 'new-visiting-researcher', query: { type: 'planned' } }">Dodaj planirano gostovanje</RouterLink></header>
+        <header class="heading">
+          <h2>Planirana gostovanja ({{ periodPlanned.length }})</h2>
+          <RouterLink
+            class="action"
+            :to="{ name: 'new-visiting-researcher', query: { type: 'planned' } }"
+            >Dodaj planirano gostovanje</RouterLink
+          >
+        </header>
         <div v-if="periodPlanned.length" class="list-grid">
-          <div><div class="list"><button v-for="item in shownPlanned" :key="item.id" :class="{ selected: selectedType === 'planned' && selected?.id === item.id }" @click="choose('planned', item)"><strong>{{ item.researcher_name }}</strong><span>{{ display(item.planned_period) }}</span></button></div><div v-if="plannedPages > 1" class="pagination"><button v-for="number in plannedPages" :key="number" :class="{ active: plannedPage === number }" @click="plannedPage = number">{{ number }}</button></div></div>
-          <dl v-if="selected && selectedType === 'planned'" ref="detailsCard" class="details"><div class="actions"><button v-if="!form" class="action" @click="startEdit">Uredi</button><template v-else><button class="action" :disabled="saving || deleting" @click="save">{{ saving ? 'Spremanje...' : 'Spremi' }}</button><button class="action" :disabled="saving || deleting" @click="cancelEdit">Odustani</button><button class="square minus" :disabled="saving || deleting" @click="remove">−</button></template></div><p v-if="editError" class="error">{{ editError }}</p><div v-for="field in selectedFields" :key="field.key"><dt>{{ field.label }}</dt><dd><CountryAutocomplete v-if="form && field.kind === 'country'" v-model="form[field.key]" :countries="countries" class="input" placeholder="Nije odabrano" /><select v-else-if="form && field.kind === 'unit'" v-model="form[field.key]" class="input"><option value="">Nije odabrano</option><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select><textarea v-else-if="form && field.kind === 'textarea'" v-model="form[field.key]" class="input" rows="3"></textarea><input v-else-if="form" v-model="form[field.key]" class="input"><template v-else>{{ fieldValue(field) }}</template></dd></div></dl>
-        </div><p v-else>Nema planiranih gostovanja.</p>
+          <div>
+            <div class="list">
+              <button
+                v-for="item in shownPlanned"
+                :key="item.id"
+                :class="{ selected: selectedType === 'planned' && selected?.id === item.id }"
+                @click="choose('planned', item)"
+              >
+                <strong>{{ item.researcher_name }}</strong
+                ><span>{{ display(item.planned_period) }}</span>
+              </button>
+            </div>
+            <div v-if="plannedPages > 1" class="pagination">
+              <button
+                v-for="number in plannedPages"
+                :key="number"
+                :class="{ active: plannedPage === number }"
+                @click="plannedPage = number"
+              >
+                {{ number }}
+              </button>
+            </div>
+          </div>
+          <dl v-if="selected && selectedType === 'planned'" ref="detailsCard" class="details">
+            <div class="actions">
+              <button v-if="!form" class="action" @click="startEdit">Uredi</button
+              ><template v-else
+                ><button class="action" :disabled="saving || deleting" @click="save">
+                  {{ saving ? 'Spremanje...' : 'Spremi' }}</button
+                ><button class="action" :disabled="saving || deleting" @click="cancelEdit">
+                  Odustani</button
+                ><button class="square minus" :disabled="saving || deleting" @click="remove">
+                  −
+                </button></template
+              >
+            </div>
+            <p v-if="editError" class="error">{{ editError }}</p>
+            <div v-for="field in selectedFields" :key="field.key">
+              <dt>{{ field.label }}</dt>
+              <dd>
+                <CountryAutocomplete
+                  v-if="form && field.kind === 'country'"
+                  v-model="form[field.key]"
+                  :countries="countries"
+                  class="input"
+                  placeholder="Nije odabrano"
+                /><select
+                  v-else-if="form && field.kind === 'unit'"
+                  v-model="form[field.key]"
+                  class="input"
+                >
+                  <option value="">Nije odabrano</option>
+                  <option v-for="unit in units" :key="unit.id" :value="unit.id">
+                    {{ unit.short_name || unit.name }}
+                  </option></select
+                ><textarea
+                  v-else-if="form && field.kind === 'textarea'"
+                  v-model="form[field.key]"
+                  class="input"
+                  rows="3"
+                ></textarea
+                ><input v-else-if="form" v-model="form[field.key]" class="input" /><template
+                  v-else
+                  >{{ fieldValue(field) }}</template
+                >
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <p v-else>Nema planiranih gostovanja.</p>
       </section>
 
-      <section class="summary"><h2>Analiza po sastavnicama</h2><div class="table"><table><thead><tr><th>Sastavnica</th><th>Broj gostovanja</th><th>Ukupno dana</th><th>Broj predavanja</th><th>Broj publikacija</th><th>Broj projekata</th></tr></thead><tbody><tr v-for="item in periodAnalyses" :key="item.organizational_unit_id"><td>{{ item.organizational_unit_name || unitName(item.organizational_unit_id) }}</td><td>{{ item.visit_count }}</td><td>{{ item.total_days }}</td><td>{{ item.lecture_count }}</td><td>{{ item.publication_count }}</td><td>{{ item.project_count }}</td></tr><tr v-if="!periodAnalyses.length"><td colspan="6">Nema podataka za odabrano razdoblje.</td></tr></tbody></table></div></section>
+      <section class="summary">
+        <h2>Analiza po sastavnicama</h2>
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Sastavnica</th>
+                <th>Broj gostovanja</th>
+                <th>Ukupno dana</th>
+                <th>Broj predavanja</th>
+                <th>Broj publikacija</th>
+                <th>Broj projekata</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in periodAnalyses" :key="item.organizational_unit_id">
+                <td>
+                  {{ item.organizational_unit_name || unitName(item.organizational_unit_id) }}
+                </td>
+                <td>{{ item.visit_count }}</td>
+                <td>{{ item.total_days }}</td>
+                <td>{{ item.lecture_count }}</td>
+                <td>{{ item.publication_count }}</td>
+                <td>{{ item.project_count }}</td>
+              </tr>
+              <tr v-if="!periodAnalyses.length">
+                <td colspan="6">Nema podataka za odabrano razdoblje.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </template>
     <div v-if="success" class="snackbar">{{ success }}</div>
   </main>
 </template>
 
 <style scoped>
-.view{min-height:calc(100vh - 112px);padding:34px clamp(32px,5vw,128px) 90px;background:rgb(var(--v-theme-background));color:rgb(var(--v-theme-on-background))}.breadcrumbs,.overview,.heading,.actions{display:flex;align-items:center}.breadcrumbs{gap:10px;color:rgb(var(--v-theme-muted))}.breadcrumbs a{color:inherit;text-decoration:none}.breadcrumbs a:hover{color:rgb(var(--v-theme-primary))}h1{margin:18px 0 0;color:rgb(var(--v-theme-primary));font-size:clamp(1.5rem,1.65vw,2.35rem);font-weight:400}h2{font-weight:400}.overview,.heading{justify-content:space-between}.overview{margin-top:36px}.overview label{display:grid;gap:8px;color:rgb(var(--v-theme-primary));font-weight:700}select,.input{padding:9px 12px;border:1px solid rgb(var(--v-theme-category-border));border-radius:7px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));font:inherit}.records,.summary{margin-top:70px}.action{padding:9px 15px;border:1px solid rgb(var(--v-theme-category-border));border-radius:7px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));cursor:pointer;font:inherit;text-decoration:none}.action:hover:not(:disabled){background:rgb(var(--v-theme-primary));color:rgb(var(--v-theme-on-primary))}.list-grid{display:grid;grid-template-columns:minmax(360px,.8fr) minmax(570px,1.2fr);gap:clamp(32px,5vw,88px);align-items:start;margin-top:32px}.list{display:grid;gap:5px}.list button{display:grid;gap:5px;padding:13px 16px;border:0;border-radius:7px;background:transparent;color:rgb(var(--v-theme-membership-link));cursor:pointer;text-align:left;font:inherit;line-height:1.45}.list button span{color:rgb(var(--v-theme-muted));font-size:.9rem}.list button:hover,.list button.selected{background:rgba(var(--v-theme-primary),.1)}.pagination{display:flex;justify-content:center;gap:5px;margin-top:20px}.pagination button{width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:rgb(var(--v-theme-primary));cursor:pointer}.pagination button.active{background:rgb(var(--v-theme-primary));color:rgb(var(--v-theme-on-primary))}.details{display:grid;gap:14px;margin:0;padding:clamp(28px,3vw,48px);border:1px solid rgb(var(--v-theme-category-border));border-radius:10px;background:rgb(var(--v-theme-category-card));color:rgb(var(--v-theme-on-category-card))}.details>div:not(.actions){display:grid;grid-template-columns:minmax(190px,.85fr) minmax(0,1.15fr);gap:22px}.details dd{margin:0;overflow-wrap:anywhere;white-space:pre-line}.actions{justify-content:flex-end;gap:8px}.input{width:100%;box-sizing:border-box}.square{display:grid;width:38px;height:38px;padding:0;place-items:center;border:1px solid rgb(var(--v-theme-on-surface));border-radius:6px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));cursor:pointer;font-size:1.2rem}.minus:hover:not(:disabled){background:rgb(var(--v-theme-error));color:#fff}.action:disabled,.square:disabled{cursor:not-allowed;opacity:.5}.table{overflow-x:auto;border-radius:10px}.table table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 15px;border:1px solid rgb(var(--v-theme-table-border));text-align:left}.table th{border-color:rgb(var(--v-theme-table-header-border));background:rgb(var(--v-theme-category-card));color:rgb(var(--v-theme-on-category-card))}.error{color:rgb(var(--v-theme-error))}.snackbar{position:fixed;right:28px;bottom:28px;padding:14px 18px;border:1px solid #62a957;border-radius:7px;background:#b8f5ae;color:#1f5525}@media(max-width:1000px){.list-grid{grid-template-columns:1fr}}@media(max-width:650px){.view{padding:28px 20px}.overview,.heading{align-items:stretch;flex-direction:column;gap:20px}.details>div:not(.actions){grid-template-columns:1fr}}
+.view {
+  min-height: calc(100vh - 112px);
+  padding: 34px clamp(32px, 5vw, 128px) 90px;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
+}
+.breadcrumbs,
+.overview,
+.heading,
+.actions {
+  display: flex;
+  align-items: center;
+}
+.breadcrumbs {
+  gap: 10px;
+  color: rgb(var(--v-theme-muted));
+}
+.breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+.breadcrumbs a:hover {
+  color: rgb(var(--v-theme-primary));
+}
+h1 {
+  margin: 18px 0 0;
+  color: rgb(var(--v-theme-primary));
+  font-size: clamp(1.5rem, 1.65vw, 2.35rem);
+  font-weight: 400;
+}
+h2 {
+  font-weight: 400;
+}
+.overview,
+.heading {
+  justify-content: space-between;
+}
+.overview {
+  margin-top: 36px;
+}
+.overview label {
+  display: grid;
+  gap: 8px;
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+}
+select,
+.input {
+  padding: 9px 12px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 7px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font: inherit;
+}
+.records,
+.summary {
+  margin-top: 70px;
+}
+.action {
+  padding: 9px 15px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 7px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+.action:hover:not(:disabled) {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.list-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.8fr) minmax(570px, 1.2fr);
+  gap: clamp(32px, 5vw, 88px);
+  align-items: start;
+  margin-top: 32px;
+}
+.list {
+  display: grid;
+  gap: 5px;
+}
+.list button {
+  display: grid;
+  gap: 5px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgb(var(--v-theme-membership-link));
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  line-height: 1.45;
+}
+.list button span {
+  color: rgb(var(--v-theme-muted));
+  font-size: 0.9rem;
+}
+.list button:hover,
+.list button.selected {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 20px;
+}
+.pagination button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(var(--v-theme-primary));
+  cursor: pointer;
+}
+.pagination button.active {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.details {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: clamp(28px, 3vw, 48px);
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 10px;
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+}
+.details > div:not(.actions) {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.85fr) minmax(0, 1.15fr);
+  gap: 22px;
+}
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+.input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.square {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(var(--v-theme-on-surface));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+.minus:hover:not(:disabled) {
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+}
+.action:disabled,
+.square:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.table {
+  overflow-x: auto;
+  border-radius: 10px;
+}
+.table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
+  padding: 13px 15px;
+  border: 1px solid rgb(var(--v-theme-table-border));
+  text-align: left;
+}
+.table th {
+  border-color: rgb(var(--v-theme-table-header-border));
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+}
+.error {
+  color: rgb(var(--v-theme-error));
+}
+.snackbar {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  padding: 14px 18px;
+  border: 1px solid #62a957;
+  border-radius: 7px;
+  background: #b8f5ae;
+  color: #1f5525;
+}
+@media (max-width: 1000px) {
+  .list-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .view {
+    padding: 28px 20px;
+  }
+  .overview,
+  .heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .details > div:not(.actions) {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

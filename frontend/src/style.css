@@ -1,5 +1,11 @@
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   color: #29271f;
   background: #ffffff;
   font-synthesis: none;
@@ -23,7 +29,10 @@ body {
 .v-app-bar,
 .home-view,
 .category-card {
-  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
 }
 
 a {

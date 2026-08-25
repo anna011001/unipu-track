@@ -67,7 +67,9 @@ const modules = [
   line-height: 1.4;
   text-align: center;
   text-decoration: none;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .module-card[href] {

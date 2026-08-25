@@ -81,7 +81,9 @@ const modules = [
   font-weight: 400;
   line-height: 1.4;
   text-align: center;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .module-card:hover {

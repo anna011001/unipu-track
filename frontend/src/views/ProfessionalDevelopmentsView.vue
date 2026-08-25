@@ -134,7 +134,9 @@ function getStaffMemberName(id) {
 }
 
 function getAcademicTitle(id) {
-  return staffMembers.value.find((member) => Number(member.id) === Number(id))?.academic_title || '—'
+  return (
+    staffMembers.value.find((member) => Number(member.id) === Number(id))?.academic_title || '—'
+  )
 }
 
 function findName(items, id, getLabel) {
@@ -271,9 +273,7 @@ async function saveEdit() {
   }
 
   if (
-    form.mediaRecords.some(
-      (media) => !media.development_name.trim() || !media.media_link.trim(),
-    )
+    form.mediaRecords.some((media) => !media.development_name.trim() || !media.media_link.trim())
   ) {
     editError.value = 'Naziv usavršavanja i link obavezni su za svaku medijsku objavu.'
     return
@@ -348,20 +348,20 @@ async function saveEdit() {
       ...form.deletedConfirmationIds.map((id) =>
         api.delete(`/api/professional-developments/confirmations/${id}`),
       ),
-      ...form.deletedMediaIds.map((id) =>
-        api.delete(`/api/professional-developments/media/${id}`),
-      ),
+      ...form.deletedMediaIds.map((id) => api.delete(`/api/professional-developments/media/${id}`)),
     ])
 
     const updated = {
       ...selectedDevelopment.value,
       ...response.data,
       staff_first_name:
-        staffMembers.value.find((member) => Number(member.id) === Number(response.data.staff_member_id))
-          ?.first_name || '',
+        staffMembers.value.find(
+          (member) => Number(member.id) === Number(response.data.staff_member_id),
+        )?.first_name || '',
       staff_last_name:
-        staffMembers.value.find((member) => Number(member.id) === Number(response.data.staff_member_id))
-          ?.last_name || '',
+        staffMembers.value.find(
+          (member) => Number(member.id) === Number(response.data.staff_member_id),
+        )?.last_name || '',
     }
     const index = developments.value.findIndex((item) => item.id === updated.id)
     if (index !== -1) developments.value[index] = updated
@@ -454,9 +454,7 @@ function deleteMediaRecord(media) {
   }
 
   editForm.value.deletedMediaIds.push(media.id)
-  editForm.value.mediaRecords = editForm.value.mediaRecords.filter(
-    (item) => item.id !== media.id,
-  )
+  editForm.value.mediaRecords = editForm.value.mediaRecords.filter((item) => item.id !== media.id)
 }
 
 function exportRecords() {
@@ -513,7 +511,9 @@ async function loadData() {
 
     reportingPeriods.value = Array.isArray(periods.data) ? periods.data : []
     developments.value = Array.isArray(records.data) ? records.data : []
-    confirmations.value = Array.isArray(confirmationsResponse.data) ? confirmationsResponse.data : []
+    confirmations.value = Array.isArray(confirmationsResponse.data)
+      ? confirmationsResponse.data
+      : []
     mediaRecords.value = Array.isArray(media.data) ? media.data : []
     staffMembers.value = Array.isArray(staff.data) ? staff.data : []
     organizationalUnits.value = Array.isArray(units.data) ? units.data : []
@@ -565,10 +565,20 @@ onUnmounted(() => {
               </option>
             </select>
           </label>
-          <dl class="record-count"><dt>Ukupno usavršavanja</dt><dd>{{ filteredDevelopments.length }}</dd></dl>
+          <dl class="record-count">
+            <dt>Ukupno usavršavanja</dt>
+            <dd>{{ filteredDevelopments.length }}</dd>
+          </dl>
         </div>
         <div class="page-actions">
-          <button class="action-button" type="button" :disabled="!filteredDevelopments.length" @click="exportRecords">Izvoz</button>
+          <button
+            class="action-button"
+            type="button"
+            :disabled="!filteredDevelopments.length"
+            @click="exportRecords"
+          >
+            Izvoz
+          </button>
         </div>
       </section>
 
@@ -590,7 +600,11 @@ onUnmounted(() => {
       <section class="records-section">
         <div class="section-heading">
           <h2>Stručna usavršavanja ({{ filteredDevelopments.length }})</h2>
-          <RouterLink class="action-button wide-button" to="/istrazivanje-i-razvoj/strucna-usavrsavanja/novo">Dodaj novo usavršavanje</RouterLink>
+          <RouterLink
+            class="action-button wide-button"
+            to="/istrazivanje-i-razvoj/strucna-usavrsavanja/novo"
+            >Dodaj novo usavršavanje</RouterLink
+          >
         </div>
 
         <div v-if="filteredDevelopments.length" class="records-layout">
@@ -608,87 +622,380 @@ onUnmounted(() => {
                 <span>{{ development.program_name }}</span>
               </button>
             </div>
-            <nav v-if="pageCount > 1" class="pagination" aria-label="Stranice stručnih usavršavanja">
+            <nav
+              v-if="pageCount > 1"
+              class="pagination"
+              aria-label="Stranice stručnih usavršavanja"
+            >
               <template v-for="item in getPaginationItems(currentPage, pageCount)" :key="item">
                 <span v-if="typeof item === 'string'" class="pagination-item">…</span>
-                <button v-else class="pagination-item pagination-button" :class="{ active: item === currentPage }" type="button" @click="currentPage = item">{{ item }}</button>
+                <button
+                  v-else
+                  class="pagination-item pagination-button"
+                  :class="{ active: item === currentPage }"
+                  type="button"
+                  @click="currentPage = item"
+                >
+                  {{ item }}
+                </button>
               </template>
             </nav>
           </div>
 
           <dl v-if="selectedDevelopment" ref="detailsCard" class="details-card">
             <div class="details-actions">
-              <button v-if="!editForm" class="action-button edit-button" type="button" @click="startEdit">Uredi</button>
+              <button
+                v-if="!editForm"
+                class="action-button edit-button"
+                type="button"
+                @click="startEdit"
+              >
+                Uredi
+              </button>
               <template v-else>
-                <button class="action-button edit-button" type="button" :disabled="saving || deletingDevelopment" @click="saveEdit">{{ saving ? 'Spremanje...' : 'Spremi' }}</button>
-                <button class="action-button edit-button" type="button" :disabled="saving || deletingDevelopment" @click="cancelEdit">Odustani</button>
-                <button class="minus-button" type="button" aria-label="Izbriši stručno usavršavanje" title="Izbriši stručno usavršavanje" :disabled="saving || deletingDevelopment" @click="deleteDevelopment">−</button>
+                <button
+                  class="action-button edit-button"
+                  type="button"
+                  :disabled="saving || deletingDevelopment"
+                  @click="saveEdit"
+                >
+                  {{ saving ? 'Spremanje...' : 'Spremi' }}
+                </button>
+                <button
+                  class="action-button edit-button"
+                  type="button"
+                  :disabled="saving || deletingDevelopment"
+                  @click="cancelEdit"
+                >
+                  Odustani
+                </button>
+                <button
+                  class="minus-button"
+                  type="button"
+                  aria-label="Izbriši stručno usavršavanje"
+                  title="Izbriši stručno usavršavanje"
+                  :disabled="saving || deletingDevelopment"
+                  @click="deleteDevelopment"
+                >
+                  −
+                </button>
               </template>
             </div>
             <p v-if="editError" class="edit-error" role="alert">{{ editError }}</p>
-            <div><dt>Broj</dt><dd>{{ selectedDevelopment.id }}</dd></div>
-            <div><dt>Ime i prezime</dt><dd><select v-if="editForm" v-model="editForm.staff_member_id" class="detail-input"><option v-for="member in staffMembers" :key="member.id" :value="member.id">{{ member.first_name }} {{ member.last_name }}</option></select><template v-else>{{ getStaffName(selectedDevelopment) }}</template></dd></div>
-            <div><dt>Zvanje</dt><dd>{{ getAcademicTitle(editForm ? editForm.staff_member_id : selectedDevelopment.staff_member_id) }}</dd></div>
-            <div><dt>Sastavnica</dt><dd><select v-if="editForm" v-model="editForm.organizational_unit_id" class="detail-input"><option value="">—</option><option v-for="unit in organizationalUnits" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select><template v-else>{{ findName(organizationalUnits, selectedDevelopment.organizational_unit_id, (unit) => unit.short_name || unit.name) }}</template></dd></div>
-            <div><dt>Vrsta usavršavanja</dt><dd><select v-if="editForm" v-model="editForm.development_type" class="detail-input"><option v-for="type in developmentTypes.slice(1)" :key="type.value" :value="type.value">{{ type.label }}</option></select><template v-else>{{ getTypeLabel(selectedDevelopment.development_type) }}</template></dd></div>
-            <div><dt>Naziv programa</dt><dd><input v-if="editForm" v-model="editForm.program_name" class="detail-input" maxlength="250" /><template v-else>{{ selectedDevelopment.program_name }}</template></dd></div>
-            <div><dt>Ustanova domaćin</dt><dd><input v-if="editForm" v-model="editForm.host_organization_name" class="detail-input" maxlength="200" /><template v-else>{{ displayValue(selectedDevelopment.host_organization_name || selectedDevelopment.host_organization_database_name) }}</template></dd></div>
-            <div><dt>Država</dt><dd><CountryAutocomplete v-if="editForm" v-model="editForm.country_id" :countries="countries" class="detail-input" placeholder="—" /><template v-else>{{ findName(countries, selectedDevelopment.country_id, (country) => country.name_hr) }}</template></dd></div>
-            <div><dt>Početni datum</dt><dd><input v-if="editForm" v-model="editForm.start_date" class="detail-input" type="date" /><template v-else>{{ formatDate(selectedDevelopment.start_date) }}</template></dd></div>
-            <div><dt>Završni datum</dt><dd><input v-if="editForm" v-model="editForm.end_date" class="detail-input" type="date" /><template v-else>{{ formatDate(selectedDevelopment.end_date) }}</template></dd></div>
-            <div><dt>Medijska poveznica</dt><dd><input v-if="editForm" v-model="editForm.media_link" class="detail-input" /><a v-else-if="getLink(selectedDevelopment.media_link)" class="record-link" :href="getLink(selectedDevelopment.media_link)" target="_blank" rel="noopener noreferrer">{{ selectedDevelopment.media_link }}</a><template v-else>{{ displayValue(selectedDevelopment.media_link) }}</template></dd></div>
-            <div><dt>Napomena</dt><dd><textarea v-if="editForm" v-model="editForm.notes" class="detail-input" rows="2"></textarea><template v-else>{{ displayValue(selectedDevelopment.notes) }}</template></dd></div>
+            <div>
+              <dt>Broj</dt>
+              <dd>{{ selectedDevelopment.id }}</dd>
+            </div>
+            <div>
+              <dt>Ime i prezime</dt>
+              <dd>
+                <select v-if="editForm" v-model="editForm.staff_member_id" class="detail-input">
+                  <option v-for="member in staffMembers" :key="member.id" :value="member.id">
+                    {{ member.first_name }} {{ member.last_name }}
+                  </option></select
+                ><template v-else>{{ getStaffName(selectedDevelopment) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Zvanje</dt>
+              <dd>
+                {{
+                  getAcademicTitle(
+                    editForm ? editForm.staff_member_id : selectedDevelopment.staff_member_id,
+                  )
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Sastavnica</dt>
+              <dd>
+                <select
+                  v-if="editForm"
+                  v-model="editForm.organizational_unit_id"
+                  class="detail-input"
+                >
+                  <option value="">—</option>
+                  <option v-for="unit in organizationalUnits" :key="unit.id" :value="unit.id">
+                    {{ unit.short_name || unit.name }}
+                  </option></select
+                ><template v-else>{{
+                  findName(
+                    organizationalUnits,
+                    selectedDevelopment.organizational_unit_id,
+                    (unit) => unit.short_name || unit.name,
+                  )
+                }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Vrsta usavršavanja</dt>
+              <dd>
+                <select v-if="editForm" v-model="editForm.development_type" class="detail-input">
+                  <option
+                    v-for="type in developmentTypes.slice(1)"
+                    :key="type.value"
+                    :value="type.value"
+                  >
+                    {{ type.label }}
+                  </option></select
+                ><template v-else>{{
+                  getTypeLabel(selectedDevelopment.development_type)
+                }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Naziv programa</dt>
+              <dd>
+                <input
+                  v-if="editForm"
+                  v-model="editForm.program_name"
+                  class="detail-input"
+                  maxlength="250"
+                /><template v-else>{{ selectedDevelopment.program_name }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Ustanova domaćin</dt>
+              <dd>
+                <input
+                  v-if="editForm"
+                  v-model="editForm.host_organization_name"
+                  class="detail-input"
+                  maxlength="200"
+                /><template v-else>{{
+                  displayValue(
+                    selectedDevelopment.host_organization_name ||
+                      selectedDevelopment.host_organization_database_name,
+                  )
+                }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Država</dt>
+              <dd>
+                <CountryAutocomplete
+                  v-if="editForm"
+                  v-model="editForm.country_id"
+                  :countries="countries"
+                  class="detail-input"
+                  placeholder="—"
+                /><template v-else>{{
+                  findName(countries, selectedDevelopment.country_id, (country) => country.name_hr)
+                }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Početni datum</dt>
+              <dd>
+                <input
+                  v-if="editForm"
+                  v-model="editForm.start_date"
+                  class="detail-input"
+                  type="date"
+                /><template v-else>{{ formatDate(selectedDevelopment.start_date) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Završni datum</dt>
+              <dd>
+                <input
+                  v-if="editForm"
+                  v-model="editForm.end_date"
+                  class="detail-input"
+                  type="date"
+                /><template v-else>{{ formatDate(selectedDevelopment.end_date) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Medijska poveznica</dt>
+              <dd>
+                <input v-if="editForm" v-model="editForm.media_link" class="detail-input" /><a
+                  v-else-if="getLink(selectedDevelopment.media_link)"
+                  class="record-link"
+                  :href="getLink(selectedDevelopment.media_link)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{ selectedDevelopment.media_link }}</a
+                ><template v-else>{{ displayValue(selectedDevelopment.media_link) }}</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Napomena</dt>
+              <dd>
+                <textarea
+                  v-if="editForm"
+                  v-model="editForm.notes"
+                  class="detail-input"
+                  rows="2"
+                ></textarea
+                ><template v-else>{{ displayValue(selectedDevelopment.notes) }}</template>
+              </dd>
+            </div>
 
             <div class="details-subsection">
               <div class="subsection-heading">
                 <h3>Potvrde ustanova domaćina</h3>
-                <button v-if="editForm" class="plus-button" type="button" aria-label="Dodaj potvrdu ustanove domaćina" title="Dodaj potvrdu" :disabled="saving" @click="addConfirmation">+</button>
+                <button
+                  v-if="editForm"
+                  class="plus-button"
+                  type="button"
+                  aria-label="Dodaj potvrdu ustanove domaćina"
+                  title="Dodaj potvrdu"
+                  :disabled="saving"
+                  @click="addConfirmation"
+                >
+                  +
+                </button>
               </div>
               <template v-if="editForm">
-                <article v-for="confirmation in editForm.confirmations" :key="confirmation.id || confirmation.temporaryId" class="related-edit-card">
-                  <button class="minus-button related-delete-button" type="button" :aria-label="`Izbriši potvrdu ustanove ${confirmation.institution_name}`" title="Izbriši potvrdu" :disabled="saving" @click="deleteConfirmation(confirmation)">−</button>
-                  <label>Naziv institucije<input v-model="confirmation.institution_name" class="detail-input" maxlength="200" /></label>
-                  <label>Ime i prezime potpisnika<input v-model="confirmation.signer_name" class="detail-input" maxlength="40" /></label>
-                  <label>Funkcija<input v-model="confirmation.signer_function" class="detail-input" maxlength="40" /></label>
-                  <label>Datum<input v-model="confirmation.confirmation_date" class="detail-input" type="date" /></label>
-                  <label>Pečat<select v-model="confirmation.seal_present" class="detail-input"><option :value="null">—</option><option :value="true">Da</option><option :value="false">Ne</option></select></label>
+                <article
+                  v-for="confirmation in editForm.confirmations"
+                  :key="confirmation.id || confirmation.temporaryId"
+                  class="related-edit-card"
+                >
+                  <button
+                    class="minus-button related-delete-button"
+                    type="button"
+                    :aria-label="`Izbriši potvrdu ustanove ${confirmation.institution_name}`"
+                    title="Izbriši potvrdu"
+                    :disabled="saving"
+                    @click="deleteConfirmation(confirmation)"
+                  >
+                    −
+                  </button>
+                  <label
+                    >Naziv institucije<input
+                      v-model="confirmation.institution_name"
+                      class="detail-input"
+                      maxlength="200"
+                  /></label>
+                  <label
+                    >Ime i prezime potpisnika<input
+                      v-model="confirmation.signer_name"
+                      class="detail-input"
+                      maxlength="40"
+                  /></label>
+                  <label
+                    >Funkcija<input
+                      v-model="confirmation.signer_function"
+                      class="detail-input"
+                      maxlength="40"
+                  /></label>
+                  <label
+                    >Datum<input
+                      v-model="confirmation.confirmation_date"
+                      class="detail-input"
+                      type="date"
+                  /></label>
+                  <label
+                    >Pečat<select v-model="confirmation.seal_present" class="detail-input">
+                      <option :value="null">—</option>
+                      <option :value="true">Da</option>
+                      <option :value="false">Ne</option>
+                    </select></label
+                  >
                 </article>
-                <p v-if="!editForm.confirmations.length" class="subsection-empty">Nema povezanih potvrda.</p>
+                <p v-if="!editForm.confirmations.length" class="subsection-empty">
+                  Nema povezanih potvrda.
+                </p>
               </template>
               <template v-else>
-                <article v-for="confirmation in relatedConfirmations" :key="confirmation.id" class="related-card">
+                <article
+                  v-for="confirmation in relatedConfirmations"
+                  :key="confirmation.id"
+                  class="related-card"
+                >
                   <strong>{{ confirmation.institution_name }}</strong>
                   <span>{{ displayValue(confirmation.signer_name) }}</span>
                   <span>{{ displayValue(confirmation.signer_function) }}</span>
                   <span>{{ formatDate(confirmation.confirmation_date) }}</span>
-                  <span>Pečat: {{ confirmation.seal_present === null ? '—' : confirmation.seal_present ? 'da' : 'ne' }}</span>
+                  <span
+                    >Pečat:
+                    {{
+                      confirmation.seal_present === null
+                        ? '—'
+                        : confirmation.seal_present
+                          ? 'da'
+                          : 'ne'
+                    }}</span
+                  >
                 </article>
-                <p v-if="!relatedConfirmations.length" class="subsection-empty">Nema povezanih potvrda.</p>
+                <p v-if="!relatedConfirmations.length" class="subsection-empty">
+                  Nema povezanih potvrda.
+                </p>
               </template>
             </div>
 
             <div class="details-subsection">
               <div class="subsection-heading">
                 <h3>Linkovi na medijske objave</h3>
-                <button v-if="editForm" class="plus-button" type="button" aria-label="Dodaj link na medijsku objavu" title="Dodaj medijsku objavu" :disabled="saving" @click="addMediaRecord">+</button>
+                <button
+                  v-if="editForm"
+                  class="plus-button"
+                  type="button"
+                  aria-label="Dodaj link na medijsku objavu"
+                  title="Dodaj medijsku objavu"
+                  :disabled="saving"
+                  @click="addMediaRecord"
+                >
+                  +
+                </button>
               </div>
               <template v-if="editForm">
-                <article v-for="media in editForm.mediaRecords" :key="media.id || media.temporaryId" class="related-edit-card">
-                  <button class="minus-button related-delete-button" type="button" :aria-label="`Izbriši medijsku objavu ${media.development_name}`" title="Izbriši medijsku objavu" :disabled="saving" @click="deleteMediaRecord(media)">−</button>
-                  <label>Naziv usavršavanja<input v-model="media.development_name" class="detail-input" maxlength="250" /></label>
-                  <label>Vrsta medija<input v-model="media.media_type" class="detail-input" maxlength="80" /></label>
+                <article
+                  v-for="media in editForm.mediaRecords"
+                  :key="media.id || media.temporaryId"
+                  class="related-edit-card"
+                >
+                  <button
+                    class="minus-button related-delete-button"
+                    type="button"
+                    :aria-label="`Izbriši medijsku objavu ${media.development_name}`"
+                    title="Izbriši medijsku objavu"
+                    :disabled="saving"
+                    @click="deleteMediaRecord(media)"
+                  >
+                    −
+                  </button>
+                  <label
+                    >Naziv usavršavanja<input
+                      v-model="media.development_name"
+                      class="detail-input"
+                      maxlength="250"
+                  /></label>
+                  <label
+                    >Vrsta medija<input
+                      v-model="media.media_type"
+                      class="detail-input"
+                      maxlength="80"
+                  /></label>
                   <label>Link<input v-model="media.media_link" class="detail-input" /></label>
-                  <label>Datum objave<input v-model="media.published_on" class="detail-input" type="date" /></label>
+                  <label
+                    >Datum objave<input
+                      v-model="media.published_on"
+                      class="detail-input"
+                      type="date"
+                  /></label>
                 </article>
-                <p v-if="!editForm.mediaRecords.length" class="subsection-empty">Nema povezanih medijskih objava.</p>
+                <p v-if="!editForm.mediaRecords.length" class="subsection-empty">
+                  Nema povezanih medijskih objava.
+                </p>
               </template>
               <template v-else>
                 <article v-for="media in relatedMedia" :key="media.id" class="related-card">
-                  <a class="record-link" :href="getLink(media.media_link)" target="_blank" rel="noopener noreferrer">{{ media.development_name }}</a>
+                  <a
+                    class="record-link"
+                    :href="getLink(media.media_link)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ media.development_name }}</a
+                  >
                   <span>{{ displayValue(media.media_type) }}</span>
                   <span>{{ formatDate(media.published_on) }}</span>
                 </article>
-                <p v-if="!relatedMedia.length" class="subsection-empty">Nema povezanih medijskih objava.</p>
+                <p v-if="!relatedMedia.length" class="subsection-empty">
+                  Nema povezanih medijskih objava.
+                </p>
               </template>
             </div>
           </dl>
@@ -700,8 +1007,34 @@ onUnmounted(() => {
         <h2>Sažetak potvrda ustanova domaćina</h2>
         <div v-if="periodConfirmations.length" class="summary-table-wrapper">
           <table class="summary-table">
-            <thead><tr><th>Broj</th><th>Naziv institucije</th><th>Ime i prezime potpisnika</th><th>Funkcija</th><th>Datum</th><th>Pečat</th></tr></thead>
-            <tbody><tr v-for="(confirmation, index) in periodConfirmations" :key="confirmation.id"><td>{{ index + 1 }}</td><td>{{ confirmation.institution_name }}</td><td>{{ displayValue(confirmation.signer_name) }}</td><td>{{ displayValue(confirmation.signer_function) }}</td><td>{{ formatDate(confirmation.confirmation_date) }}</td><td>{{ confirmation.seal_present === null ? '—' : confirmation.seal_present ? 'Da' : 'Ne' }}</td></tr></tbody>
+            <thead>
+              <tr>
+                <th>Broj</th>
+                <th>Naziv institucije</th>
+                <th>Ime i prezime potpisnika</th>
+                <th>Funkcija</th>
+                <th>Datum</th>
+                <th>Pečat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(confirmation, index) in periodConfirmations" :key="confirmation.id">
+                <td>{{ index + 1 }}</td>
+                <td>{{ confirmation.institution_name }}</td>
+                <td>{{ displayValue(confirmation.signer_name) }}</td>
+                <td>{{ displayValue(confirmation.signer_function) }}</td>
+                <td>{{ formatDate(confirmation.confirmation_date) }}</td>
+                <td>
+                  {{
+                    confirmation.seal_present === null
+                      ? '—'
+                      : confirmation.seal_present
+                        ? 'Da'
+                        : 'Ne'
+                  }}
+                </td>
+              </tr>
+            </tbody>
           </table>
         </div>
         <p v-else class="empty-message">Nema potvrda za odabrano izvještajno razdoblje.</p>
@@ -709,89 +1042,500 @@ onUnmounted(() => {
         <h2 class="second-summary-heading">Sažetak medijskih objava</h2>
         <div v-if="periodMedia.length" class="summary-table-wrapper">
           <table class="summary-table">
-            <thead><tr><th>Broj</th><th>Naziv usavršavanja</th><th>Vrsta medija</th><th>Link</th><th>Datum objave</th></tr></thead>
-            <tbody><tr v-for="(media, index) in periodMedia" :key="media.id"><td>{{ index + 1 }}</td><td>{{ media.development_name }}</td><td>{{ displayValue(media.media_type) }}</td><td><a class="record-link" :href="getLink(media.media_link)" target="_blank" rel="noopener noreferrer">{{ media.media_link }}</a></td><td>{{ formatDate(media.published_on) }}</td></tr></tbody>
+            <thead>
+              <tr>
+                <th>Broj</th>
+                <th>Naziv usavršavanja</th>
+                <th>Vrsta medija</th>
+                <th>Link</th>
+                <th>Datum objave</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(media, index) in periodMedia" :key="media.id">
+                <td>{{ index + 1 }}</td>
+                <td>{{ media.development_name }}</td>
+                <td>{{ displayValue(media.media_type) }}</td>
+                <td>
+                  <a
+                    class="record-link"
+                    :href="getLink(media.media_link)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ media.media_link }}</a
+                  >
+                </td>
+                <td>{{ formatDate(media.published_on) }}</td>
+              </tr>
+            </tbody>
           </table>
         </div>
         <p v-else class="empty-message">Nema medijskih objava za odabrano izvještajno razdoblje.</p>
       </section>
     </template>
 
-    <Transition name="snackbar"><div v-if="successMessage" class="success-snackbar" role="status" aria-live="polite">{{ successMessage }}</div></Transition>
+    <Transition name="snackbar"
+      ><div v-if="successMessage" class="success-snackbar" role="status" aria-live="polite">
+        {{ successMessage }}
+      </div></Transition
+    >
   </main>
 </template>
 
 <style scoped>
-.developments-view { min-height: calc(100vh - 112px); padding: 34px clamp(32px, 5vw, 128px) 90px; background: rgb(var(--v-theme-background)); color: rgb(var(--v-theme-on-background)); }
-.breadcrumbs { display: flex; gap: 10px; color: rgb(var(--v-theme-muted)); font-size: clamp(1rem, 1.1vw, 1.45rem); }
-.breadcrumbs a:hover { color: rgb(var(--v-theme-primary)); }
-h1 { margin: 18px 0 0; color: rgb(var(--v-theme-primary)); font-size: clamp(1.5rem, 1.65vw, 2.35rem); font-weight: 400; }
-h2 { margin: 0; font-size: clamp(1.5rem, 1.7vw, 2.35rem); font-weight: 400; }
-.page-message, .empty-message { margin-top: 32px; color: rgb(var(--v-theme-muted)); }
-.error-message, .edit-error { color: rgb(var(--v-theme-error)); }
-.overview-section, .overview-content, .page-actions, .section-heading, .filters-section, .type-filters, .details-actions { display: flex; align-items: center; }
-.overview-section, .section-heading { justify-content: space-between; }
-.overview-section { align-items: end; gap: 36px; margin-top: 36px; }
-.overview-content { align-items: end; gap: clamp(30px, 5vw, 76px); }
-.period-field { display: grid; gap: 8px; color: rgb(var(--v-theme-primary)); font-weight: 700; }
-.period-field select { min-height: 43px; padding: 9px 14px; border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 7px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); font: inherit; }
-.record-count { margin: 0; }
-.record-count dt { color: rgb(var(--v-theme-muted)); font-size: .9rem; }
-.record-count dd { margin: 8px 0 0; color: rgb(var(--v-theme-primary)); font-size: 1.15rem; font-weight: 700; }
-.page-actions, .details-actions { gap: 10px; }
-.action-button { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; padding: 9px 18px; border: 1px solid rgb(var(--v-theme-on-surface)); border-radius: 6px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); cursor: pointer; font: inherit; transition: background-color 160ms ease, color 160ms ease; }
-.action-button:hover:not(:disabled) { background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); }
-.action-button:disabled { cursor: not-allowed; opacity: .5; }
-.minus-button { display: inline-grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 1px solid rgb(var(--v-theme-on-surface)); border-radius: 6px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); cursor: pointer; font: inherit; font-size: 1.25rem; line-height: 1; }
-.minus-button:hover:not(:disabled) { border-color: rgb(var(--v-theme-error)); background: rgb(var(--v-theme-error)); color: #fff; }
-.minus-button:disabled { cursor: not-allowed; opacity: .5; }
-.plus-button { display: inline-grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 1px solid rgb(var(--v-theme-on-surface)); border-radius: 6px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); cursor: pointer; font: inherit; font-size: 1.2rem; line-height: 1; }
-.plus-button:hover:not(:disabled) { background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); }
-.plus-button:disabled { cursor: not-allowed; opacity: .5; }
-.wide-button { min-width: 230px; }
-.filters-section { align-items: stretch; gap: 24px; margin-top: 48px; }
-.type-filters { flex-wrap: wrap; gap: 10px; }
-.type-button { padding: 9px 15px; border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 999px; background: transparent; color: rgb(var(--v-theme-on-background)); cursor: pointer; font: inherit; }
-.type-button:hover, .type-button.active { background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); }
-.records-section, .summary-section { margin-top: clamp(60px, 8vh, 100px); }
-.records-layout { display: grid; grid-template-columns: minmax(300px, .9fr) minmax(460px, 1.1fr); align-items: start; gap: clamp(44px, 8vw, 150px); margin-top: 34px; }
-.record-list { display: grid; grid-template-rows: repeat(5, auto); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px clamp(28px, 4vw, 58px); width: calc(100% + clamp(20px, 3vw, 50px)); }
-.record-row { display: grid; gap: 4px; padding: 13px 16px; border: 0; border-radius: 7px; background: transparent; color: rgb(var(--v-theme-membership-link)); cursor: pointer; font: inherit; text-align: left; }
-.record-row:hover, .record-row.selected { background: rgba(var(--v-theme-primary), .1); }
-.record-row.selected { color: rgb(var(--v-theme-on-background)); }
-.record-row strong { font-weight: 500; }
-.record-row span { color: rgb(var(--v-theme-muted)); font-size: .9rem; }
-.pagination { display: flex; justify-content: center; gap: 6px; margin-top: 22px; }
-.pagination-item { display: grid; width: 30px; height: 30px; place-items: center; color: rgb(var(--v-theme-primary)); }
-.pagination-button { padding: 0; border: 0; border-radius: 7px; background: transparent; cursor: pointer; font: inherit; }
-.pagination-button.active { background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); }
-.details-card { display: grid; gap: 9px; margin: 0; padding: clamp(28px, 3vw, 48px); border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 10px; background: rgb(var(--v-theme-category-card)); color: rgb(var(--v-theme-on-category-card)); }
-.details-card > div:not(.details-actions):not(.details-subsection) { display: grid; grid-template-columns: minmax(160px, .9fr) minmax(0, 1.1fr); gap: 24px; }
-.details-actions { justify-content: flex-end; }
-.details-card dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.details-card dt { font-weight: 500; }
-.edit-error { margin: 0 0 8px; }
-.detail-input { width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid rgb(var(--v-theme-on-category-card)); border-radius: 6px; outline: none; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); font: inherit; }
-textarea.detail-input { resize: vertical; }
-.record-link { color: rgb(var(--v-theme-evidence-link)); cursor: pointer; text-decoration: none; }
-.record-link:hover { opacity: .75; text-decoration: underline; }
-.details-subsection { display: grid; gap: 14px; margin-top: 18px; padding-top: 22px; border-top: 1px solid rgb(var(--v-theme-category-border)); }
-.details-subsection h3 { margin: 0 0 4px; font-size: 1.08rem; font-weight: 600; }
-.subsection-heading { display: flex; align-items: center; gap: 10px; }
-.related-card { display: grid; gap: 7px; padding: 22px; border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 10px; background: rgb(var(--v-theme-category-card)); color: rgb(var(--v-theme-on-category-card)); }
-.related-edit-card { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; padding: 52px 18px 18px; border: 1px solid rgb(var(--v-theme-category-border)); border-radius: 9px; }
-.related-delete-button { position: absolute; top: 12px; right: 12px; }
-.related-edit-card label { display: grid; gap: 6px; font-size: .88rem; }
-.subsection-empty { margin: 0; color: rgb(var(--v-theme-muted)); }
-.summary-table-wrapper { margin-top: 28px; overflow-x: auto; border-radius: 10px; }
-.summary-table { width: 100%; border-collapse: collapse; text-align: left; }
-.summary-table th, .summary-table td { padding: 13px 16px; border: 1px solid rgb(var(--v-theme-table-border)); }
-.summary-table th { border-color: rgb(var(--v-theme-table-header-border)); background: rgb(var(--v-theme-category-card)); color: rgb(var(--v-theme-on-category-card)); }
-.second-summary-heading { margin-top: 58px; }
-.success-snackbar { position: fixed; right: 28px; bottom: 28px; z-index: 1000; min-width: min(360px, calc(100vw - 40px)); padding: 14px 18px; border: 1px solid #62a957; border-radius: 7px; box-shadow: 0 5px 18px rgba(0,0,0,.2); background: #b8f5ae; color: #1f5525; }
-.snackbar-enter-active, .snackbar-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
-.snackbar-enter-from, .snackbar-leave-to { opacity: 0; transform: translateY(12px); }
-@media (max-width: 950px) { .records-layout { grid-template-columns: 1fr; } }
-@media (max-width: 650px) { .developments-view { padding: 28px 20px 56px; } .overview-section, .filters-section, .section-heading { align-items: stretch; flex-direction: column; } .overview-content { align-items: start; flex-direction: column; } .type-filters { align-items: stretch; flex-direction: column; } .wide-button { width: 100%; } .record-list { width: 100%; grid-template-rows: none; grid-auto-flow: row; grid-template-columns: 1fr; } .details-card > div:not(.details-actions):not(.details-subsection), .related-edit-card { grid-template-columns: 1fr; } .success-snackbar { right: 20px; bottom: 20px; } }
-@media print { .page-actions, .filters-section, .wide-button, .details-actions, .pagination { display: none; } }
+.developments-view {
+  min-height: calc(100vh - 112px);
+  padding: 34px clamp(32px, 5vw, 128px) 90px;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
+}
+.breadcrumbs {
+  display: flex;
+  gap: 10px;
+  color: rgb(var(--v-theme-muted));
+  font-size: clamp(1rem, 1.1vw, 1.45rem);
+}
+.breadcrumbs a:hover {
+  color: rgb(var(--v-theme-primary));
+}
+h1 {
+  margin: 18px 0 0;
+  color: rgb(var(--v-theme-primary));
+  font-size: clamp(1.5rem, 1.65vw, 2.35rem);
+  font-weight: 400;
+}
+h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.7vw, 2.35rem);
+  font-weight: 400;
+}
+.page-message,
+.empty-message {
+  margin-top: 32px;
+  color: rgb(var(--v-theme-muted));
+}
+.error-message,
+.edit-error {
+  color: rgb(var(--v-theme-error));
+}
+.overview-section,
+.overview-content,
+.page-actions,
+.section-heading,
+.filters-section,
+.type-filters,
+.details-actions {
+  display: flex;
+  align-items: center;
+}
+.overview-section,
+.section-heading {
+  justify-content: space-between;
+}
+.overview-section {
+  align-items: end;
+  gap: 36px;
+  margin-top: 36px;
+}
+.overview-content {
+  align-items: end;
+  gap: clamp(30px, 5vw, 76px);
+}
+.period-field {
+  display: grid;
+  gap: 8px;
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+}
+.period-field select {
+  min-height: 43px;
+  padding: 9px 14px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 7px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font: inherit;
+}
+.record-count {
+  margin: 0;
+}
+.record-count dt {
+  color: rgb(var(--v-theme-muted));
+  font-size: 0.9rem;
+}
+.record-count dd {
+  margin: 8px 0 0;
+  color: rgb(var(--v-theme-primary));
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.page-actions,
+.details-actions {
+  gap: 10px;
+}
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 9px 18px;
+  border: 1px solid rgb(var(--v-theme-on-surface));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.action-button:hover:not(:disabled) {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.minus-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(var(--v-theme-on-surface));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.minus-button:hover:not(:disabled) {
+  border-color: rgb(var(--v-theme-error));
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+}
+.minus-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.plus-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(var(--v-theme-on-surface));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.plus-button:hover:not(:disabled) {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.plus-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.wide-button {
+  min-width: 230px;
+}
+.filters-section {
+  align-items: stretch;
+  gap: 24px;
+  margin-top: 48px;
+}
+.type-filters {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.type-button {
+  padding: 9px 15px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(var(--v-theme-on-background));
+  cursor: pointer;
+  font: inherit;
+}
+.type-button:hover,
+.type-button.active {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.records-section,
+.summary-section {
+  margin-top: clamp(60px, 8vh, 100px);
+}
+.records-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(460px, 1.1fr);
+  align-items: start;
+  gap: clamp(44px, 8vw, 150px);
+  margin-top: 34px;
+}
+.record-list {
+  display: grid;
+  grid-template-rows: repeat(5, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 5px clamp(28px, 4vw, 58px);
+  width: calc(100% + clamp(20px, 3vw, 50px));
+}
+.record-row {
+  display: grid;
+  gap: 4px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgb(var(--v-theme-membership-link));
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.record-row:hover,
+.record-row.selected {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+.record-row.selected {
+  color: rgb(var(--v-theme-on-background));
+}
+.record-row strong {
+  font-weight: 500;
+}
+.record-row span {
+  color: rgb(var(--v-theme-muted));
+  font-size: 0.9rem;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 22px;
+}
+.pagination-item {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: rgb(var(--v-theme-primary));
+}
+.pagination-button {
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.pagination-button.active {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.details-card {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: clamp(28px, 3vw, 48px);
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 10px;
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+}
+.details-card > div:not(.details-actions):not(.details-subsection) {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(0, 1.1fr);
+  gap: 24px;
+}
+.details-actions {
+  justify-content: flex-end;
+}
+.details-card dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.details-card dt {
+  font-weight: 500;
+}
+.edit-error {
+  margin: 0 0 8px;
+}
+.detail-input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid rgb(var(--v-theme-on-category-card));
+  border-radius: 6px;
+  outline: none;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font: inherit;
+}
+textarea.detail-input {
+  resize: vertical;
+}
+.record-link {
+  color: rgb(var(--v-theme-evidence-link));
+  cursor: pointer;
+  text-decoration: none;
+}
+.record-link:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+.details-subsection {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 22px;
+  border-top: 1px solid rgb(var(--v-theme-category-border));
+}
+.details-subsection h3 {
+  margin: 0 0 4px;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+.subsection-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.related-card {
+  display: grid;
+  gap: 7px;
+  padding: 22px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 10px;
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+}
+.related-edit-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  padding: 52px 18px 18px;
+  border: 1px solid rgb(var(--v-theme-category-border));
+  border-radius: 9px;
+}
+.related-delete-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.related-edit-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+.subsection-empty {
+  margin: 0;
+  color: rgb(var(--v-theme-muted));
+}
+.summary-table-wrapper {
+  margin-top: 28px;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.summary-table th,
+.summary-table td {
+  padding: 13px 16px;
+  border: 1px solid rgb(var(--v-theme-table-border));
+}
+.summary-table th {
+  border-color: rgb(var(--v-theme-table-header-border));
+  background: rgb(var(--v-theme-category-card));
+  color: rgb(var(--v-theme-on-category-card));
+}
+.second-summary-heading {
+  margin-top: 58px;
+}
+.success-snackbar {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 1000;
+  min-width: min(360px, calc(100vw - 40px));
+  padding: 14px 18px;
+  border: 1px solid #62a957;
+  border-radius: 7px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2);
+  background: #b8f5ae;
+  color: #1f5525;
+}
+.snackbar-enter-active,
+.snackbar-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+.snackbar-enter-from,
+.snackbar-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+@media (max-width: 950px) {
+  .records-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .developments-view {
+    padding: 28px 20px 56px;
+  }
+  .overview-section,
+  .filters-section,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .overview-content {
+    align-items: start;
+    flex-direction: column;
+  }
+  .type-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .wide-button {
+    width: 100%;
+  }
+  .record-list {
+    width: 100%;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+  }
+  .details-card > div:not(.details-actions):not(.details-subsection),
+  .related-edit-card {
+    grid-template-columns: 1fr;
+  }
+  .success-snackbar {
+    right: 20px;
+    bottom: 20px;
+  }
+}
+@media print {
+  .page-actions,
+  .filters-section,
+  .wide-button,
+  .details-actions,
+  .pagination {
+    display: none;
+  }
+}
 </style>

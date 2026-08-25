@@ -10,10 +10,12 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
-const items = computed(() => props.countries.map((country) => ({
-  value: country.id,
-  title: country.name_hr || country.name_en,
-})))
+const items = computed(() =>
+  props.countries.map((country) => ({
+    value: country.id,
+    title: country.name_hr || country.name_en,
+  })),
+)
 
 function update(value) {
   emit('update:modelValue', value ?? '')

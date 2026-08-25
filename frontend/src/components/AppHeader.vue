@@ -9,7 +9,9 @@ import { clearAuthSession, currentUser, updateCurrentUser } from '../services/au
 const router = useRouter()
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === 'unipuDark')
-const userName = computed(() => currentUser.value ? `${currentUser.value.first_name} ${currentUser.value.last_name}` : 'Korisnik')
+const userName = computed(() =>
+  currentUser.value ? `${currentUser.value.first_name} ${currentUser.value.last_name}` : 'Korisnik',
+)
 const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
 
 function toggleTheme() {
@@ -53,7 +55,9 @@ onMounted(() => {
       <nav class="header-navigation" aria-label="Glavna navigacija">
         <RouterLink class="nav-link" to="/">Početna</RouterLink>
         <RouterLink class="nav-link" to="/glavni-obrazac">Glavni obrazac</RouterLink>
-        <RouterLink v-if="isAdmin" class="nav-link" to="/administracija/korisnici">Korisnici</RouterLink>
+        <RouterLink v-if="isAdmin" class="nav-link" to="/administracija/korisnici"
+          >Korisnici</RouterLink
+        >
         <div class="user-menu">
           <RouterLink class="nav-link user-link" to="/profil">{{ userName }}</RouterLink>
           <button class="logout-button" type="button" @click="logout">Odjava</button>
@@ -70,7 +74,6 @@ onMounted(() => {
       </nav>
     </div>
   </v-app-bar>
-
 </template>
 
 <style scoped>
@@ -139,7 +142,11 @@ onMounted(() => {
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -5px);
-  transition: opacity 150ms ease, transform 150ms ease, background-color 150ms ease, color 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
   white-space: nowrap;
 }
 

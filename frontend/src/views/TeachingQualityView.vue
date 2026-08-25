@@ -2,8 +2,14 @@
 const modules = [
   { title: 'Optimizacija rasporeda nastavnika', to: '/nastava-i-kvaliteta/optimizacija-rasporeda' },
   { title: 'Prilagodbe rasporeda', to: '/nastava-i-kvaliteta/prilagodbe-rasporeda' },
-  { title: 'Planiranje mjera prema studentskim anketama', to: '/nastava-i-kvaliteta/mjere-prema-studentskim-anketama' },
-  { title: 'Znanstvena produktivnost tijekom slobodne studijske godine', to: '/nastava-i-kvaliteta/znanstvena-produktivnost' },
+  {
+    title: 'Planiranje mjera prema studentskim anketama',
+    to: '/nastava-i-kvaliteta/mjere-prema-studentskim-anketama',
+  },
+  {
+    title: 'Znanstvena produktivnost tijekom slobodne studijske godine',
+    to: '/nastava-i-kvaliteta/znanstvena-produktivnost',
+  },
 ]
 </script>
 
@@ -13,7 +19,9 @@ const modules = [
 
     <div class="module-grid">
       <template v-for="module in modules" :key="module.title">
-        <RouterLink v-if="module.to" class="module-card" :to="module.to">{{ module.title }}</RouterLink>
+        <RouterLink v-if="module.to" class="module-card" :to="module.to">{{
+          module.title
+        }}</RouterLink>
         <article v-else class="module-card">{{ module.title }}</article>
       </template>
     </div>
@@ -65,8 +73,13 @@ const modules = [
   text-decoration: none;
 }
 
-.module-card[href] { cursor: pointer; transition: background-color 160ms ease; }
-.module-card[href]:hover { background: rgb(var(--v-theme-category-card-hover)); }
+.module-card[href] {
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+.module-card[href]:hover {
+  background: rgb(var(--v-theme-category-card-hover));
+}
 
 @media (max-width: 760px) {
   .teaching-view {

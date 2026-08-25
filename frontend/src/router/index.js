@@ -191,7 +191,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.meta.public && isAuthenticated.value && !to.meta.allowAuthenticated) return { name: 'home' }
+  if (to.meta.public && isAuthenticated.value && !to.meta.allowAuthenticated)
+    return { name: 'home' }
 
   if (!to.meta.public && !isAuthenticated.value) {
     return {
