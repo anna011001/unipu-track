@@ -97,7 +97,22 @@ router.get("/", async (req, res, next) => {
             SELECT
                 sm.*,
                 ou.name AS organizational_unit_name,
-                ou.short_name AS organizational_unit_short_name
+                ou.short_name AS organizational_unit_short_name,
+                COALESCE((
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', unit.id,
+                            'name', unit.name,
+                            'short_name', unit.short_name,
+                            'is_primary', relation.is_primary
+                        )
+                        ORDER BY relation.is_primary DESC, unit.short_name, unit.name
+                    )
+                    FROM staff_member_organizational_units relation
+                    JOIN organizational_units unit
+                        ON unit.id = relation.organizational_unit_id
+                    WHERE relation.staff_member_id = sm.id
+                ), '[]'::json) AS organizational_units
             FROM staff_members sm
             LEFT JOIN organizational_units ou
                 ON ou.id = sm.organizational_unit_id
@@ -118,7 +133,22 @@ router.get("/:id", validateId, async (req, res, next) => {
                 SELECT
                     sm.*,
                     ou.name AS organizational_unit_name,
-                    ou.short_name AS organizational_unit_short_name
+                    ou.short_name AS organizational_unit_short_name,
+                    COALESCE((
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', unit.id,
+                                'name', unit.name,
+                                'short_name', unit.short_name,
+                                'is_primary', relation.is_primary
+                            )
+                            ORDER BY relation.is_primary DESC, unit.short_name, unit.name
+                        )
+                        FROM staff_member_organizational_units relation
+                        JOIN organizational_units unit
+                            ON unit.id = relation.organizational_unit_id
+                        WHERE relation.staff_member_id = sm.id
+                    ), '[]'::json) AS organizational_units
                 FROM staff_members sm
                 LEFT JOIN organizational_units ou
                     ON ou.id = sm.organizational_unit_id

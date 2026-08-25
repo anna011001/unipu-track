@@ -123,24 +123,39 @@ router.post("/register", async (req, res, next) => {
       [user.email],
     );
 
+    let staffMemberId;
+
     if (staffResult.rows.length) {
-      await client.query(
+      const updatedStaffResult = await client.query(
         `UPDATE staff_members
          SET user_id = $1, first_name = $2, last_name = $3,
              academic_title = $4, organizational_unit_id = $5,
              is_active = TRUE, updated_at = NOW()
-         WHERE id = $6`,
+         WHERE id = $6
+         RETURNING id`,
         [user.id, firstName, lastName, academicTitle, organizationalUnitId, staffResult.rows[0].id],
       );
+      staffMemberId = updatedStaffResult.rows[0].id;
     } else {
-      await client.query(
+      const createdStaffResult = await client.query(
         `INSERT INTO staff_members (
            user_id, organizational_unit_id, first_name, last_name,
            academic_title, email, is_active
-         ) VALUES ($1, $2, $3, $4, $5, $6, TRUE)`,
+         ) VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+         RETURNING id`,
         [user.id, organizationalUnitId, firstName, lastName, academicTitle, user.email],
       );
+      staffMemberId = createdStaffResult.rows[0].id;
     }
+
+    await client.query(
+      `INSERT INTO staff_member_organizational_units (
+         staff_member_id, organizational_unit_id, is_primary
+       ) VALUES ($1, $2, TRUE)
+       ON CONFLICT (staff_member_id, organizational_unit_id)
+       DO UPDATE SET is_primary = TRUE`,
+      [staffMemberId, organizationalUnitId],
+    );
     await client.query("COMMIT");
 
     return res.status(201).json({
@@ -260,14 +275,125 @@ router.get("/authorized-emails", authenticate, requireAdmin, async (req, res, ne
     const result = await pool.query(`
       SELECT aue.id, aue.email, aue.created_at, u.id AS user_id,
              u.first_name, u.last_name, u.role,
-             COALESCE(u.is_active, FALSE) AS is_registered
+             COALESCE(u.is_active, FALSE) AS is_registered,
+             sm.id AS staff_member_id,
+             sm.academic_title,
+             sm.organizational_unit_id AS primary_organizational_unit_id,
+             primary_unit.name AS primary_organizational_unit_name,
+             primary_unit.short_name AS primary_organizational_unit_short_name,
+             COALESCE((
+               SELECT json_agg(
+                 json_build_object(
+                   'id', unit.id,
+                   'name', unit.name,
+                   'short_name', unit.short_name,
+                   'is_primary', relation.is_primary
+                 )
+                 ORDER BY relation.is_primary DESC, unit.short_name, unit.name
+               )
+               FROM staff_member_organizational_units relation
+               JOIN organizational_units unit
+                 ON unit.id = relation.organizational_unit_id
+               WHERE relation.staff_member_id = sm.id
+             ), '[]'::json) AS organizational_units
       FROM authorized_user_emails aue
       LEFT JOIN users u ON LOWER(u.email) = LOWER(aue.email)
+      LEFT JOIN staff_members sm ON sm.user_id = u.id
+      LEFT JOIN organizational_units primary_unit
+        ON primary_unit.id = sm.organizational_unit_id
       ORDER BY aue.email
     `);
     return res.status(200).json(result.rows);
   } catch (error) {
     return next(error);
+  }
+});
+
+router.put("/authorized-emails/:id/organizational-units", authenticate, requireAdmin, async (req, res, next) => {
+  const id = Number(req.params.id);
+  const suppliedIds = req.body?.organizational_unit_ids;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "ID zapisa nije ispravan." });
+  }
+  if (!Array.isArray(suppliedIds)) {
+    return res.status(400).json({ message: "Sastavnice moraju biti poslane kao popis ID-eva." });
+  }
+
+  const organizationalUnitIds = [...new Set(suppliedIds.map(Number))];
+  if (organizationalUnitIds.some((unitId) => !Number.isInteger(unitId) || unitId <= 0)) {
+    return res.status(400).json({ message: "Popis sastavnica sadrži neispravan ID." });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const staffResult = await client.query(
+      `SELECT sm.id, sm.organizational_unit_id
+       FROM authorized_user_emails aue
+       JOIN users u ON LOWER(u.email) = LOWER(aue.email)
+       JOIN staff_members sm ON sm.user_id = u.id
+       WHERE aue.id = $1
+       FOR UPDATE OF sm`,
+      [id],
+    );
+    const staffMember = staffResult.rows[0];
+
+    if (!staffMember) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Registrirani nastavnik nije pronađen." });
+    }
+
+    if (organizationalUnitIds.length) {
+      const unitResult = await client.query(
+        "SELECT id FROM organizational_units WHERE id = ANY($1::int[])",
+        [organizationalUnitIds],
+      );
+      if (unitResult.rows.length !== organizationalUnitIds.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Jedna ili više odabranih sastavnica ne postoje." });
+      }
+    }
+
+    const primaryUnitId = Number(staffMember.organizational_unit_id);
+    const additionalUnitIds = organizationalUnitIds.filter((unitId) => unitId !== primaryUnitId);
+
+    await client.query(
+      `DELETE FROM staff_member_organizational_units
+       WHERE staff_member_id = $1 AND is_primary = FALSE`,
+      [staffMember.id],
+    );
+
+    if (primaryUnitId) {
+      await client.query(
+        `INSERT INTO staff_member_organizational_units (
+           staff_member_id, organizational_unit_id, is_primary
+         ) VALUES ($1, $2, TRUE)
+         ON CONFLICT (staff_member_id, organizational_unit_id)
+         DO UPDATE SET is_primary = TRUE`,
+        [staffMember.id, primaryUnitId],
+      );
+    }
+
+    for (const unitId of additionalUnitIds) {
+      await client.query(
+        `INSERT INTO staff_member_organizational_units (
+           staff_member_id, organizational_unit_id, is_primary
+         ) VALUES ($1, $2, FALSE)
+         ON CONFLICT (staff_member_id, organizational_unit_id)
+         DO UPDATE SET is_primary = FALSE`,
+        [staffMember.id, unitId],
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.status(200).json({ message: "Sastavnice nastavnika uspješno su spremljene." });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally {
+    client.release();
   }
 });
 

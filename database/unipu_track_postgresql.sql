@@ -49,6 +49,46 @@ CREATE TABLE staff_members (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE staff_member_organizational_units (
+    staff_member_id         INTEGER NOT NULL
+                            REFERENCES staff_members(id) ON DELETE CASCADE,
+    organizational_unit_id  INTEGER NOT NULL
+                            REFERENCES organizational_units(id) ON DELETE CASCADE,
+    is_primary              BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (staff_member_id, organizational_unit_id)
+);
+
+CREATE UNIQUE INDEX uq_staff_member_primary_organizational_unit
+    ON staff_member_organizational_units(staff_member_id)
+    WHERE is_primary = TRUE;
+
+CREATE OR REPLACE FUNCTION sync_staff_member_primary_organizational_unit()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE staff_member_organizational_units
+    SET is_primary = FALSE
+    WHERE staff_member_id = NEW.id AND is_primary = TRUE;
+
+    IF NEW.organizational_unit_id IS NOT NULL THEN
+        INSERT INTO staff_member_organizational_units (
+            staff_member_id,
+            organizational_unit_id,
+            is_primary
+        ) VALUES (NEW.id, NEW.organizational_unit_id, TRUE)
+        ON CONFLICT (staff_member_id, organizational_unit_id)
+        DO UPDATE SET is_primary = TRUE;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_staff_member_primary_organizational_unit
+AFTER INSERT OR UPDATE OF organizational_unit_id ON staff_members
+FOR EACH ROW
+EXECUTE FUNCTION sync_staff_member_primary_organizational_unit();
+
 CREATE TABLE reporting_periods (
     id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     label               VARCHAR(20) NOT NULL UNIQUE,
