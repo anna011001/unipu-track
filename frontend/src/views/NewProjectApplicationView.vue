@@ -296,12 +296,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.new-view {
-  min-height: calc(100vh - 112px);
-  padding: 34px clamp(32px, 5vw, 128px) 90px;
-  background: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
-}
 nav,
 .actions {
   display: flex;
@@ -368,39 +362,10 @@ textarea {
 .actions {
   justify-content: flex-end;
 }
-.button {
-  padding: 10px 18px;
-  border: 1px solid rgb(var(--v-theme-on-surface));
-  border-radius: 7px;
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  cursor: pointer;
-}
-.button:hover:not(:disabled) {
-  background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
-}
-.button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
 .back {
   margin-top: 20px;
 }
-.snackbar {
-  position: fixed;
-  right: 28px;
-  bottom: 28px;
-  padding: 14px 18px;
-  border: 1px solid #62a957;
-  border-radius: 7px;
-  background: #b8f5ae;
-  color: #1f5525;
-}
 @media (max-width: 650px) {
-  .new-view {
-    padding: 28px 20px;
-  }
   .grid {
     grid-template-columns: 1fr;
   }
