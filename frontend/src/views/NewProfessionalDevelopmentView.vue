@@ -194,7 +194,7 @@ onUnmounted(() => {
 
         <div class="form-grid two-columns">
           <label class="form-field"><span>Ustanova domaćin</span><input v-model="form.host_organization_name" list="host-organizations" maxlength="200" placeholder="Naziv ustanove" :disabled="saved" @change="useHostOrganizationData" /><datalist id="host-organizations"><option v-for="organization in organizations" :key="organization.id">{{ organization.name }}</option></datalist></label>
-          <label class="form-field"><span>Država</span><select v-model="form.country_id" :disabled="saved"><option :value="null">Nije odabrano</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr }}</option></select></label>
+          <label class="form-field"><span>Država</span><CountryAutocomplete v-model="form.country_id" :countries="countries" :disabled="saved" placeholder="Nije odabrano" /></label>
         </div>
 
         <div class="form-grid two-columns">

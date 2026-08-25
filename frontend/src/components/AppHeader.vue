@@ -26,6 +26,8 @@ async function loadCurrentUser() {
 }
 
 async function logout() {
+  if (!window.confirm('Želite li se odjaviti iz aplikacije?')) return
+
   clearAuthSession()
   await router.replace({ name: 'login' })
 }
@@ -51,9 +53,11 @@ onMounted(() => {
       <nav class="header-navigation" aria-label="Glavna navigacija">
         <RouterLink class="nav-link" to="/">Početna</RouterLink>
         <RouterLink class="nav-link" to="/glavni-obrazac">Glavni obrazac</RouterLink>
-        <RouterLink v-if="isAdmin" class="nav-link" to="/administracija/korisnici">{{ userName }}</RouterLink>
-        <span v-else class="nav-link user-name">{{ userName }}</span>
-        <button class="logout-button" type="button" @click="logout">Odjava</button>
+        <RouterLink v-if="isAdmin" class="nav-link" to="/administracija/korisnici">Korisnici</RouterLink>
+        <div class="user-menu">
+          <RouterLink class="nav-link user-link" to="/profil">{{ userName }}</RouterLink>
+          <button class="logout-button" type="button" @click="logout">Odjava</button>
+        </div>
         <button
           class="theme-toggle"
           type="button"
@@ -66,6 +70,7 @@ onMounted(() => {
       </nav>
     </div>
   </v-app-bar>
+
 </template>
 
 <style scoped>
@@ -107,22 +112,42 @@ onMounted(() => {
   color: rgb(var(--v-theme-primary));
 }
 
-.user-name {
-  cursor: default;
-}
-
-.user-name:hover {
-  color: rgb(var(--v-theme-on-surface));
+.user-menu {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-block: 12px;
+  margin-block: -12px;
 }
 
 .logout-button {
-  padding: 7px 12px;
+  position: absolute;
+  top: calc(100% - 9px);
+  left: 50%;
+  z-index: 10;
+  min-width: 58px;
+  min-height: 24px;
+  padding: 2px 8px;
   border: 1px solid rgba(var(--v-theme-primary), 0.75);
   border-radius: 7px;
-  background: transparent;
+  background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   cursor: pointer;
   font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -5px);
+  transition: opacity 150ms ease, transform 150ms ease, background-color 150ms ease, color 150ms ease;
+  white-space: nowrap;
+}
+
+.user-menu:hover .logout-button,
+.user-menu:focus-within .logout-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
 }
 
 .logout-button:hover {
@@ -175,8 +200,10 @@ onMounted(() => {
   }
 
   .logout-button {
-    padding: 5px 7px;
-    font-size: 0.72rem;
+    min-width: 52px;
+    min-height: 22px;
+    padding: 2px 6px;
+    font-size: 0.66rem;
   }
 
   .theme-toggle {

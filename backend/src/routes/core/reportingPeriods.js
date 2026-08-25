@@ -6,6 +6,17 @@ const router = express.Router();
 
 const allowedPeriodTypes = ["CALENDAR_YEAR", "ACADEMIC_YEAR", "CUSTOM"];
 
+async function ensureCurrentCalendarYear() {
+  const currentYear = new Date().getFullYear();
+
+  await pool.query(
+    `INSERT INTO reporting_periods (label, period_type, start_date, end_date, is_closed)
+     VALUES ($1, 'CALENDAR_YEAR', $2, $3, FALSE)
+     ON CONFLICT (label) DO NOTHING`,
+    [String(currentYear), `${currentYear}-01-01`, `${currentYear}-12-31`],
+  );
+}
+
 function validateReportingPeriod(body, partial = false) {
   const errors = [];
 
@@ -64,6 +75,7 @@ function validateReportingPeriod(body, partial = false) {
 
 router.get("/", async (req, res, next) => {
   try {
+    await ensureCurrentCalendarYear();
     const result = await pool.query(`
             SELECT *
             FROM reporting_periods

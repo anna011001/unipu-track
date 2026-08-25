@@ -421,7 +421,7 @@ onUnmounted(clearSuccessMessage)
         </div>
 
         <div class="form-grid four-column-grid">
-          <label class="form-field pill-field">
+          <label class="form-field country-style-select">
             <span>Vrsta organizacije *</span>
             <select v-model="form.organization_kind" :disabled="saved">
               <option value="" disabled>Odaberite vrstu</option>
@@ -431,7 +431,7 @@ onUnmounted(clearSuccessMessage)
             </select>
           </label>
 
-          <label class="form-field pill-field">
+          <label class="form-field country-style-select">
             <span>Razina *</span>
             <select v-model="form.organization_level" :disabled="saved">
               <option value="" disabled>Odaberite razinu</option>
@@ -443,15 +443,10 @@ onUnmounted(clearSuccessMessage)
 
           <label class="form-field pill-field">
             <span>Država sjedišta</span>
-            <select v-model.number="form.headquarters_country_id" :disabled="saved">
-              <option :value="null">Nije odabrano</option>
-              <option v-for="country in countries" :key="country.id" :value="country.id">
-                {{ country.name_hr }}
-              </option>
-            </select>
+            <CountryAutocomplete v-model="form.headquarters_country_id" :countries="countries" :disabled="saved" placeholder="Nije odabrano" />
           </label>
 
-          <label class="form-field pill-field">
+          <label class="form-field country-style-select">
             <span>Vrsta članstva</span>
             <input
               v-model="form.membership_type"
@@ -793,6 +788,15 @@ h1 {
 .pill-field input::placeholder {
   color: currentColor;
   opacity: 0.72;
+}
+
+.country-style-select input,
+.country-style-select select {
+  padding: 12px 14px;
+  border-color: rgb(var(--v-theme-category-border));
+  border-radius: 7px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .checkbox-options {

@@ -123,7 +123,7 @@ onMounted(load)
             <label>Program<select v-model="form.program_name" :disabled="saved"><option value="">Odaberite program</option><option>Erasmus+</option><option>CEEPUS</option><option>Bilateralni</option><option>Ostalo</option></select></label>
             <label v-if="form.program_name === 'Ostalo'">Naziv drugog programa<input v-model="form.other_program_name" maxlength="100" :disabled="saved"></label>
             <label>Institucija domaćin<input v-model="form.host_institution" maxlength="200" :disabled="saved"></label>
-            <label>Država<select v-model="form.destination_country_id" :disabled="saved"><option value="">Odaberite državu</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr || country.name_en }}</option></select></label>
+            <label>Država<CountryAutocomplete v-model="form.destination_country_id" :countries="countries" :disabled="saved" /></label>
           </div>
         </section>
         <section>

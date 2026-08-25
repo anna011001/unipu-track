@@ -757,10 +757,7 @@ onUnmounted(clearSuccessMessage)
             <div>
               <dt>Država sjedišta</dt>
               <dd>
-                <select v-if="newEditForm" v-model="newEditForm.headquarters_country_id" class="detail-input">
-                  <option value="">—</option>
-                  <option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr }}</option>
-                </select>
+                <CountryAutocomplete v-if="newEditForm" v-model="newEditForm.headquarters_country_id" :countries="countries" class="detail-input" placeholder="—" />
                 <template v-else>{{ getCountryName(selectedNewMembership.headquarters_country_id) }}</template>
               </dd>
             </div>
@@ -921,7 +918,7 @@ onUnmounted(clearSuccessMessage)
             </div>
             <div>
               <dt>Država</dt>
-              <dd><select v-if="activeEditForm" v-model="activeEditForm.country_id" class="detail-input"><option value="">—</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr }}</option></select><template v-else>{{ getCountryName(selectedActiveMembership.country_id) }}</template></dd>
+              <dd><CountryAutocomplete v-if="activeEditForm" v-model="activeEditForm.country_id" :countries="countries" class="detail-input" placeholder="—" /><template v-else>{{ getCountryName(selectedActiveMembership.country_id) }}</template></dd>
             </div>
             <div><dt>Godina učlanjenja</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.joined_year" class="detail-input" type="number" min="1950" :max="currentYear" /><template v-else>{{ displayValue(selectedActiveMembership.joined_year) }}</template></dd></div>
             <div><dt>Vrsta članstva</dt><dd><input v-if="activeEditForm" v-model="activeEditForm.membership_type" class="detail-input" maxlength="40" /><template v-else>{{ displayValue(selectedActiveMembership.membership_type) }}</template></dd></div>
@@ -1276,7 +1273,7 @@ onUnmounted(clearSuccessMessage)
   color: rgb(var(--v-theme-on-category-card));
 }
 
-.details-card div {
+.details-card > div {
   display: grid;
   grid-template-columns: minmax(150px, 0.9fr) minmax(0, 1.1fr);
   gap: 24px;

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import CountryAutocomplete from '../components/CountryAutocomplete.vue'
 import ExportButton from '../components/ExportButton.vue'
 
 const route = useRoute()
@@ -173,7 +174,9 @@ onMounted(load)
               <dt>{{ field.label }}</dt>
               <dd>
                 <template v-if="form">
-                  <select v-if="field.kind === 'country'" v-model="form[field.key]" class="detail-input"><option value="">Odaberite</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr || country.name_en }}</option></select>
+                  <div v-if="field.kind === 'country'" class="country-control">
+                    <CountryAutocomplete v-model="form[field.key]" :countries="countries" placeholder="Odaberite" />
+                  </div>
                   <select v-else-if="field.kind === 'type'" v-model="form[field.key]" class="detail-input"><option value="">Odaberite</option><option v-for="eventType in eventTypes" :key="eventType" :value="eventType">{{ eventType }}</option></select>
                   <textarea v-else-if="field.kind === 'area'" v-model="form[field.key]" class="detail-input" rows="2"></textarea>
                   <input v-else v-model="form[field.key]" class="detail-input" :type="field.kind === 'date' ? 'date' : ['integer','number'].includes(field.kind) ? 'number' : 'text'" :step="field.kind === 'number' ? '0.01' : undefined" :min="['integer','number'].includes(field.kind) ? 0 : undefined">
@@ -196,4 +199,11 @@ onMounted(load)
 
 <style scoped>
 .page{min-height:calc(100vh - 112px);padding:34px clamp(24px,5vw,110px) 90px;background:rgb(var(--v-theme-background));color:rgb(var(--v-theme-on-background))}.breadcrumbs,.data-section header{display:flex;align-items:center}.breadcrumbs{gap:10px;color:rgb(var(--v-theme-muted))}.breadcrumbs a{color:inherit;text-decoration:none}h1{margin:18px 0 4px;color:rgb(var(--v-theme-primary));font-size:clamp(1.6rem,2vw,2.8rem);font-weight:400}.period-row{margin-top:34px}.period-row label{display:grid;width:280px;gap:7px;color:rgb(var(--v-theme-primary));font-weight:700}button,select,input,textarea{box-sizing:border-box;border:1px solid rgb(var(--v-theme-category-border));border-radius:7px;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));font:inherit}.period-row select,button{min-height:40px;padding:8px 12px}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px;margin-top:38px}.metrics div{display:grid;gap:7px}.metrics span{color:rgb(var(--v-theme-primary));font-weight:700}.metrics strong{font-size:1.3rem}.data-section{margin-top:62px}.data-section header{justify-content:space-between;gap:20px;margin-bottom:18px}.data-section h2,.analysis h2{margin:0;font-size:1.4rem;font-weight:400}.add-button{min-width:150px}.records-layout{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(520px,1.1fr);gap:clamp(44px,8vw,150px);align-items:start;margin-top:34px}.event-list{display:grid;grid-template-rows:repeat(5,auto);grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:calc(100% + clamp(24px,4vw,64px));column-gap:clamp(32px,4vw,64px);gap:4px}.event-row{display:grid;width:100%;min-height:0;padding:14px 18px;border:0;border-radius:6px;background:transparent;color:rgb(var(--v-theme-membership-link));font-size:clamp(1rem,1.05vw,1.35rem);text-align:left;transition:color 160ms ease,background-color 160ms ease}.event-row:hover,.event-row.selected{background:rgba(var(--v-theme-primary),.1)}.event-row.selected{color:rgb(var(--v-theme-on-background))}.details-card{display:grid;gap:10px;margin:0;padding:clamp(26px,3vw,46px);border:1px solid rgb(var(--v-theme-category-border));border-radius:10px;background:rgb(var(--v-theme-category-card));color:rgb(var(--v-theme-on-category-card))}.details-card>div{display:grid;grid-template-columns:minmax(190px,.85fr) minmax(0,1.15fr);gap:24px}.details-card .details-actions{display:flex;justify-content:flex-end;gap:7px;margin-bottom:8px}.details-card dt{font-weight:500}.details-card dd{min-width:0;margin:0;overflow-wrap:anywhere}.details-card a{color:rgb(var(--v-theme-evidence-link));text-decoration:none}.details-card a:hover{opacity:.72}.square{width:40px;padding:0}.detail-input{box-sizing:border-box;width:100%;min-width:0;padding:8px 10px;border:1px solid rgb(var(--v-theme-on-category-card));border-radius:6px;outline:none;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));font:inherit}.detail-input:focus{box-shadow:0 0 0 2px rgba(var(--v-theme-on-category-card),.18)}textarea.detail-input{resize:vertical}.selection-hint,.empty{padding:38px;text-align:center;color:rgb(var(--v-theme-muted))}.analysis{margin-top:70px}.analysis-wrap{max-width:950px;margin-top:18px;overflow:hidden;border-radius:10px}.analysis table{width:100%;border-collapse:collapse}.analysis th,.analysis td{padding:11px 10px;border:1px solid rgb(var(--v-theme-table-border));text-align:center}.analysis th{border-color:rgb(var(--v-theme-table-header-border));background:rgb(var(--v-theme-category-card));color:rgb(var(--v-theme-on-category-card));font-size:.76rem}.analysis td:first-child,.analysis th:first-child{text-align:left}.analysis .total{font-weight:700}.error{color:rgb(var(--v-theme-error))}.snackbar{position:fixed;right:28px;bottom:28px;padding:14px 18px;border:1px solid #62a957;border-radius:7px;background:#b8f5ae;color:#1f5525}@media(max-width:1000px){.records-layout{grid-template-columns:1fr}.event-list{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-flow:row;width:100%}}@media(max-width:850px){.metrics{grid-template-columns:1fr 1fr}}@media(max-width:600px){.page{padding:28px 20px 56px}.metrics,.event-list{grid-template-columns:1fr}.period-row label{width:100%}.data-section header{align-items:stretch;flex-direction:column}.details-card>div{grid-template-columns:1fr;gap:5px}}
+</style>
+
+<style scoped>
+.country-control {
+  width: 100%;
+  min-width: 0;
+}
 </style>

@@ -163,7 +163,7 @@ onMounted(load)
           <label>Ime i prezime istraživača *<input v-model="form.researcher_name" maxlength="120" :disabled="saved"></label>
           <label>Zvanje<input v-model="form.academic_title" maxlength="30" :disabled="saved"></label>
           <label>Matična institucija<input v-model="form.home_institution" maxlength="200" :disabled="saved"></label>
-          <label>Država<select v-model="form.country_id" :disabled="saved"><option value="">Odaberite državu</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr || country.name_en }}</option></select></label>
+          <label>Država<CountryAutocomplete v-model="form.country_id" :countries="countries" :disabled="saved" /></label>
           <label>Znanstveno područje<input v-model="form.scientific_field" maxlength="150" :disabled="saved"></label>
           <label>Sastavnica domaćin<select v-model="form.host_unit_id" :disabled="saved"><option value="">Odaberite sastavnicu</option><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select></label>
         </div>

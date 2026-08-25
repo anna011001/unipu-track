@@ -33,6 +33,7 @@ import JointEventsView from '../views/JointEventsView.vue'
 import FacultyReportView from '../views/FacultyReportView.vue'
 import LoginView from '../views/LoginView.vue'
 import AuthorizedEmailsView from '../views/AuthorizedEmailsView.vue'
+import ProfileView from '../views/ProfileView.vue'
 import { currentUser, isAuthenticated } from '../services/auth.js'
 
 const router = createRouter({
@@ -209,6 +210,11 @@ const router = createRouter({
       name: 'authorized-emails',
       component: AuthorizedEmailsView,
       meta: { admin: true },
+    },
+    {
+      path: '/profil',
+      name: 'profile',
+      component: ProfileView,
     },
     {
       path: '/:pathMatch(.*)*',

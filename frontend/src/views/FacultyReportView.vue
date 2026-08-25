@@ -130,7 +130,6 @@ async function createReport() {
     report.value = response.data
     draft.value = makeDraft(response.data)
     await loadReportData()
-    toast('Glavni obrazac uspješno je napravljen.')
   } catch (exception) {
     error.value = apiError(exception, 'Glavni obrazac nije moguće napraviti.')
   } finally {

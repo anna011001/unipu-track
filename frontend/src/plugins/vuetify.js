@@ -3,12 +3,14 @@ import { createVuetify } from 'vuetify'
 import {
   VApp,
   VAppBar,
+  VAutocomplete,
   VMain,
 } from 'vuetify/components'
 
 const components = {
   VApp,
   VAppBar,
+  VAutocomplete,
   VMain,
 }
 

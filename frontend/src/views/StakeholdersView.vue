@@ -221,7 +221,7 @@ watch(selectedType, resetSelection)
                 <dt>{{ field.label }}</dt>
                 <dd>
                   <template v-if="form">
-                    <select v-if="field.kind === 'country'" v-model="form[field.key]" class="detail-input"><option value="">Odaberite</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr || country.name_en }}</option></select>
+                    <CountryAutocomplete v-if="field.kind === 'country'" v-model="form[field.key]" :countries="countries" class="detail-input" placeholder="Odaberite" />
                     <input v-else-if="field.kind === 'boolean'" v-model="form[field.key]" class="boolean-checkbox" type="checkbox">
                     <select v-else-if="field.kind === 'priority'" v-model="form[field.key]" class="detail-input"><option value="">—</option><option v-for="priority in 5" :key="priority" :value="priority">{{ priority }}</option></select>
                     <textarea v-else-if="field.kind === 'area'" v-model="form[field.key]" class="detail-input" rows="2"></textarea>

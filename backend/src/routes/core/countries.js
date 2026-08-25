@@ -70,7 +70,7 @@ router.get("/", async (req, res, next) => {
         const result = await pool.query(`
             SELECT *
             FROM countries
-            ORDER BY name_hr
+            ORDER BY CASE WHEN region = 'EU' THEN 0 ELSE 1 END, name_hr
         `);
 
         return res.status(200).json(result.rows);

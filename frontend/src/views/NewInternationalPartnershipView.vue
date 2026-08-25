@@ -123,7 +123,7 @@ onMounted(load)
           <h2>Partnerska institucija i vrsta suradnje</h2>
           <div class="grid">
             <label>Partnerska institucija *<input v-model="form.partner_institution" maxlength="100" :disabled="saved"></label>
-            <label>Država<select v-model="form.country_id" :disabled="saved"><option value="">Odaberite državu</option><option v-for="country in countries" :key="country.id" :value="country.id">{{ country.name_hr || country.name_en }}</option></select></label>
+            <label>Država<CountryAutocomplete v-model="form.country_id" :countries="countries" :disabled="saved" /></label>
             <label>Vrsta suradnje<select v-model="form.cooperation_kind" :disabled="saved"><option value="">Odaberite vrstu</option><option value="SCIENTIFIC">Znanstvena</option><option value="ARTISTIC">Umjetnička</option><option value="PROFESSIONAL">Profesionalna</option></select></label>
             <label>Vrsta ugovora ili sporazuma<input v-model="form.agreement_type" maxlength="100" :disabled="saved"></label>
             <label>Sastavnica<select v-model="form.organizational_unit_id" :disabled="saved"><option value="">Odaberite sastavnicu</option><option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.short_name || unit.name }}</option></select></label>

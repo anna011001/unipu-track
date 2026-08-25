@@ -5,6 +5,18 @@ import { authenticate, createToken, requireAdmin } from "../../middleware/authen
 
 const router = express.Router();
 const saltRounds = 12;
+const academicTitles = [
+  "prof. dr. sc.",
+  "izv. prof. dr. sc.",
+  "doc. dr. sc.",
+  "v. pred.",
+  "pred.",
+  "asist.",
+  "viši asist.",
+  "prof. art.",
+  "izv. prof. art.",
+  "doc. art.",
+];
 
 function normalizedText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -14,6 +26,23 @@ function validUniversityEmail(email) {
   return /^[^\s@]+@unipu\.hr$/i.test(email);
 }
 
+router.get("/registration-options", async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, short_name
+       FROM organizational_units
+       ORDER BY short_name, name`,
+    );
+
+    return res.status(200).json({
+      academic_titles: academicTitles,
+      organizational_units: result.rows,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post("/register", async (req, res, next) => {
   const firstName = normalizedText(req.body?.first_name);
   const lastName = normalizedText(req.body?.last_name);
@@ -22,6 +51,8 @@ router.post("/register", async (req, res, next) => {
   const passwordConfirmation = typeof req.body?.password_confirmation === "string"
     ? req.body.password_confirmation
     : "";
+  const academicTitle = normalizedText(req.body?.academic_title);
+  const organizationalUnitId = Number(req.body?.organizational_unit_id);
   const errors = [];
 
   if (!firstName || firstName.length > 50) errors.push("Ime je obavezno i smije imati najviše 50 znakova.");
@@ -29,6 +60,8 @@ router.post("/register", async (req, res, next) => {
   if (!validUniversityEmail(email)) errors.push("Registracija je moguća samo službenom @unipu.hr adresom.");
   if (password.length < 8) errors.push("Lozinka mora imati najmanje 8 znakova.");
   if (password !== passwordConfirmation) errors.push("Lozinke se ne podudaraju.");
+  if (!academicTitles.includes(academicTitle)) errors.push("Odaberite zvanje s ponuđenog popisa.");
+  if (!Number.isInteger(organizationalUnitId) || organizationalUnitId <= 0) errors.push("Odaberite sastavnicu.");
 
   if (errors.length) {
     return res.status(400).json({ message: "Podaci nisu ispravni.", errors });
@@ -48,6 +81,16 @@ router.post("/register", async (req, res, next) => {
       return res.status(403).json({
         message: "Ova e-mail adresa nije na popisu korisnika kojima je dopuštena registracija.",
       });
+    }
+
+    const unitResult = await client.query(
+      "SELECT id FROM organizational_units WHERE id = $1",
+      [organizationalUnitId],
+    );
+
+    if (!unitResult.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Odabrana sastavnica ne postoji." });
     }
 
     const existingResult = await client.query(
@@ -75,14 +118,29 @@ router.post("/register", async (req, res, next) => {
     );
     const user = userResult.rows[0];
 
-    await client.query(
-      `
-        UPDATE staff_members
-        SET user_id = $1, updated_at = NOW()
-        WHERE user_id IS NULL AND LOWER(email) = LOWER($2)
-      `,
-      [user.id, user.email],
+    const staffResult = await client.query(
+      "SELECT id FROM staff_members WHERE LOWER(email) = LOWER($1) ORDER BY id LIMIT 1 FOR UPDATE",
+      [user.email],
     );
+
+    if (staffResult.rows.length) {
+      await client.query(
+        `UPDATE staff_members
+         SET user_id = $1, first_name = $2, last_name = $3,
+             academic_title = $4, organizational_unit_id = $5,
+             is_active = TRUE, updated_at = NOW()
+         WHERE id = $6`,
+        [user.id, firstName, lastName, academicTitle, organizationalUnitId, staffResult.rows[0].id],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO staff_members (
+           user_id, organizational_unit_id, first_name, last_name,
+           academic_title, email, is_active
+         ) VALUES ($1, $2, $3, $4, $5, $6, TRUE)`,
+        [user.id, organizationalUnitId, firstName, lastName, academicTitle, user.email],
+      );
+    }
     await client.query("COMMIT");
 
     return res.status(201).json({
@@ -149,6 +207,49 @@ router.get("/me", authenticate, async (req, res, next) => {
     }
 
     return res.status(200).json(user);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/change-password", authenticate, async (req, res, next) => {
+  const currentPassword = typeof req.body?.current_password === "string" ? req.body.current_password : "";
+  const newPassword = typeof req.body?.new_password === "string" ? req.body.new_password : "";
+  const passwordConfirmation = typeof req.body?.password_confirmation === "string"
+    ? req.body.password_confirmation
+    : "";
+
+  if (!currentPassword) {
+    return res.status(400).json({ message: "Trenutačna lozinka je obavezna." });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: "Nova lozinka mora imati najmanje 8 znakova." });
+  }
+  if (newPassword !== passwordConfirmation) {
+    return res.status(400).json({ message: "Nove lozinke se ne podudaraju." });
+  }
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ message: "Nova lozinka mora se razlikovati od trenutačne." });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1 AND is_active = TRUE",
+      [req.authenticatedUser.id],
+    );
+    const user = result.rows[0];
+
+    if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      return res.status(400).json({ message: "Trenutačna lozinka nije ispravna." });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    await pool.query(
+      "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+      [passwordHash, req.authenticatedUser.id],
+    );
+
+    return res.status(200).json({ message: "Lozinka je uspješno promijenjena." });
   } catch (error) {
     return next(error);
   }
