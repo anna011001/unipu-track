@@ -159,7 +159,10 @@ onMounted(() => {
     <section class="login-content">
       <div class="intro">
         <p class="eyebrow">Sveučilište Jurja Dobrile u Puli</p>
-        <h1>Dobro došli u<br /><span>UNIPU Track</span></h1>
+        <h1>
+          <span class="heading-line">Dobro došli u</span>
+          <span class="heading-line heading-brand">UNIPU Track</span>
+        </h1>
         <p>
           Centralno mjesto za evidenciju aktivnosti, praćenje pokazatelja i izradu fakultetskih
           izvješća.
@@ -381,7 +384,11 @@ onMounted(() => {
   font-weight: 400;
   line-height: 1.02;
 }
-.intro h1 span {
+.intro h1 .heading-line {
+  display: block;
+  white-space: nowrap;
+}
+.intro h1 .heading-brand {
   color: rgb(var(--v-theme-primary));
 }
 .intro > p:last-child {
