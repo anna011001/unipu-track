@@ -47,6 +47,9 @@ const modules = [
 <style scoped>
 .research-view {
   min-height: calc(100vh - 112px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   padding: 34px clamp(32px, 5vw, 128px) 80px;
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
@@ -60,14 +63,16 @@ const modules = [
 }
 
 .module-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(220px, 1fr));
   gap: clamp(32px, 4vw, 86px);
   margin-top: clamp(46px, 7vh, 92px);
 }
 
 .module-card {
-  min-height: clamp(210px, 17vw, 350px);
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,6 +86,7 @@ const modules = [
   font-weight: 400;
   line-height: 1.4;
   text-align: center;
+  text-decoration: none;
   transition:
     background-color 160ms ease,
     border-color 160ms ease;
@@ -92,7 +98,9 @@ const modules = [
 
 @media (max-width: 900px) {
   .module-grid {
+    flex: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(220px, 1fr));
   }
 }
 
@@ -103,6 +111,7 @@ const modules = [
 
   .module-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
   }
 
   .module-card {
