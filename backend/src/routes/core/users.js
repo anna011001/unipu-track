@@ -1,14 +1,17 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import pool from "../../db/pool.js";
+import { requireAdmin } from "../../middleware/authenticate.js";
 import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
 
+router.use(requireAdmin);
+
 const allowedRoles = ["PROFESSOR", "ADMIN"];
 const saltRounds = 12;
 
-function validateUser(body, partial = false) {
+function validateUser(body, partial = false, requirePassword = true) {
     const errors = [];
 
     if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -50,7 +53,7 @@ function validateUser(body, partial = false) {
         }
     }
 
-    if (!partial || body.password !== undefined) {
+    if ((requirePassword && !partial) || body.password !== undefined) {
         if (
             typeof body.password !== "string" ||
             body.password.length < 8
@@ -210,7 +213,13 @@ router.post("/", async (req, res, next) => {
 
 // PUT /api/users/:id
 router.put("/:id", validateId, async (req, res, next) => {
-    const errors = validateUser(req.body);
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "password")) {
+        return res.status(400).json({
+            message: "Lozinku je moguće promijeniti samo putem /api/auth/change-password."
+        });
+    }
+
+    const errors = validateUser(req.body, false, false);
 
     if (errors.length > 0) {
         return res.status(400).json({
@@ -221,7 +230,6 @@ router.put("/:id", validateId, async (req, res, next) => {
 
     const {
         email,
-        password,
         first_name,
         last_name,
         role = "PROFESSOR",
@@ -229,23 +237,17 @@ router.put("/:id", validateId, async (req, res, next) => {
     } = req.body;
 
     try {
-        const passwordHash = await bcrypt.hash(
-            password,
-            saltRounds
-        );
-
         const result = await pool.query(
             `
                 UPDATE users
                 SET
                     email = $1,
-                    password_hash = $2,
-                    first_name = $3,
-                    last_name = $4,
-                    role = $5,
-                    is_active = $6,
+                    first_name = $2,
+                    last_name = $3,
+                    role = $4,
+                    is_active = $5,
                     updated_at = NOW()
-                WHERE id = $7
+                WHERE id = $6
                 RETURNING
                     id,
                     email,
@@ -259,7 +261,6 @@ router.put("/:id", validateId, async (req, res, next) => {
             `,
             [
                 email.trim().toLowerCase(),
-                passwordHash,
                 first_name.trim(),
                 last_name.trim(),
                 role,
@@ -294,9 +295,14 @@ router.put("/:id", validateId, async (req, res, next) => {
 
 // PATCH /api/users/:id
 router.patch("/:id", validateId, async (req, res, next) => {
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "password")) {
+        return res.status(400).json({
+            message: "Lozinku je moguće promijeniti samo putem /api/auth/change-password."
+        });
+    }
+
     const allowedFields = [
         "email",
-        "password",
         "first_name",
         "last_name",
         "role",
@@ -336,11 +342,6 @@ router.patch("/:id", validateId, async (req, res, next) => {
     for (const field of suppliedFields) {
         let databaseField = field;
         let value = req.body[field];
-
-        if (field === "password") {
-            databaseField = "password_hash";
-            value = await bcrypt.hash(value, saltRounds);
-        }
 
         if (field === "email") {
             value = value.trim().toLowerCase();

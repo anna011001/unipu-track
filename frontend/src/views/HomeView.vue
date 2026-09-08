@@ -230,6 +230,7 @@ async function loadRecentRecords() {
 }
 
 onMounted(loadRecentRecords)
+
 </script>
 
 <template>

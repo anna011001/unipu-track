@@ -6,7 +6,7 @@ export function validateId(req, res, next) {
             message: "ID mora biti pozitivan cijeli broj."
         });
     }
-
+    
     req.resourceId = id;
     next();
 }
