@@ -30,6 +30,7 @@ import recordFilesRouter from "./routes/system/recordFiles.js";
 import dashboardRouter from "./routes/system/dashboard.js";
 import authRouter from "./routes/system/auth.js";
 import { authenticate } from "./middleware/authenticate.js";
+import { requireRecordOwnerOrAdmin } from "./middleware/requireRecordOwnerOrAdmin.js";
 import { setAuditUser } from "./middleware/setAuditUser.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -66,6 +67,7 @@ app.use(
 
 app.use("/api/auth", authRouter);
 app.use("/api", authenticate);
+app.use("/api", requireRecordOwnerOrAdmin);
 
 app.use("/api/organizational-units", organizationalUnitsRouter);
 app.use("/api/reporting-periods", reportingPeriodsRouter);

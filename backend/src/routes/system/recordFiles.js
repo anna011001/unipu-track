@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import pool from "../../db/pool.js";
+import { requireAdmin } from "../../middleware/authenticate.js";
 import { validateId } from "../../middleware/validateId.js";
 
 const router = express.Router();
@@ -212,7 +213,7 @@ function validateFile(body, mode) {
         );
     }
 
-    if ((!partial || body.uploaded_by !== undefined) && !isPositiveInteger(body.uploaded_by)) {
+    if (mode === "create" && !isPositiveInteger(body.uploaded_by)) {
         errors.push("ID korisnika koji je učitao datoteku mora biti pozitivan cijeli broj.");
     }
 
@@ -291,13 +292,43 @@ function handleDatabaseError(error, res, next) {
     return next(error);
 }
 
+async function requireFileOwnerOrAdmin(req, res, next) {
+    try {
+        const result = await pool.query(
+            "SELECT uploaded_by FROM record_files WHERE id = $1",
+            [req.resourceId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({message: "Datoteka nije pronađena."});
+        }
+
+        if (
+            req.authenticatedUser.role !== "ADMIN" &&
+            Number(result.rows[0].uploaded_by) !== Number(req.authenticatedUser.id)
+        ) {
+            return res.status(403).json({
+                message: "Nemate dopuštenje za pristup ovoj datoteci."
+            });
+        }
+
+        return next();
+    } catch (error) {
+        return next(error);
+    }
+}
+
 router.get("/files", async (req, res, next) => {
     try {
         const result = await pool.query(`
             SELECT *
             FROM record_files
+            WHERE $1::boolean OR uploaded_by = $2
             ORDER BY created_at DESC
-        `);
+        `, [
+            req.authenticatedUser.role === "ADMIN",
+            req.authenticatedUser.id
+        ]);
 
         return res.status(200).json(result.rows);
     } catch (error) {
@@ -320,7 +351,7 @@ router.post("/files/upload", receiveFile, async (req, res, next) => {
         storage_path: `/uploads/${req.file.filename}`,
         mime_type: req.file.mimetype,
         file_size_bytes: req.file.size,
-        uploaded_by: req.body.uploaded_by
+        uploaded_by: req.authenticatedUser.id
     };
     const errors = validateFile(fileData, "create");
 
@@ -368,7 +399,7 @@ router.post("/files/upload", receiveFile, async (req, res, next) => {
     }
 });
 
-router.get("/files/:id", validateId, async (req, res, next) => {
+router.get("/files/:id", validateId, requireFileOwnerOrAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(
             `
@@ -390,7 +421,11 @@ router.get("/files/:id", validateId, async (req, res, next) => {
 });
 
 router.post("/files", async (req, res, next) => {
-    const errors = validateFile(req.body, "create");
+    const fileData = {
+        ...req.body,
+        uploaded_by: req.authenticatedUser.id
+    };
+    const errors = validateFile(fileData, "create");
 
     if (errors.length > 0) {
         return res.status(400).json({
@@ -408,7 +443,7 @@ router.post("/files", async (req, res, next) => {
         mime_type = null,
         file_size_bytes = null,
         uploaded_by
-    } = req.body;
+    } = fileData;
 
     try {
         const result = await pool.query(
@@ -446,8 +481,10 @@ router.post("/files", async (req, res, next) => {
     }
 });
 
-router.put("/files/:id", validateId, async (req, res, next) => {
-    const errors = validateFile(req.body, "put");
+router.put("/files/:id", validateId, requireFileOwnerOrAdmin, async (req, res, next) => {
+    const fileData = {...req.body};
+    delete fileData.uploaded_by;
+    const errors = validateFile(fileData, "put");
 
     if (errors.length > 0) {
         return res.status(400).json({
@@ -463,9 +500,8 @@ router.put("/files/:id", validateId, async (req, res, next) => {
         file_name,
         storage_path,
         mime_type = null,
-        file_size_bytes = null,
-        uploaded_by
-    } = req.body;
+        file_size_bytes = null
+    } = fileData;
 
     try {
         const result = await pool.query(
@@ -478,9 +514,8 @@ router.put("/files/:id", validateId, async (req, res, next) => {
                     file_name = $4,
                     storage_path = $5,
                     mime_type = $6,
-                    file_size_bytes = $7,
-                    uploaded_by = $8
-                WHERE id = $9
+                    file_size_bytes = $7
+                WHERE id = $8
                 RETURNING *
             `,
             [
@@ -491,7 +526,6 @@ router.put("/files/:id", validateId, async (req, res, next) => {
                 storage_path.trim(),
                 mime_type?.trim() || null,
                 file_size_bytes === null ? null : Number(file_size_bytes),
-                Number(uploaded_by),
                 req.resourceId
             ]
         );
@@ -506,7 +540,7 @@ router.put("/files/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.patch("/files/:id", validateId, async (req, res, next) => {
+router.patch("/files/:id", validateId, requireFileOwnerOrAdmin, async (req, res, next) => {
     const allowedFields = [
         "record_type",
         "record_id",
@@ -514,11 +548,12 @@ router.patch("/files/:id", validateId, async (req, res, next) => {
         "file_name",
         "storage_path",
         "mime_type",
-        "file_size_bytes",
-        "uploaded_by"
+        "file_size_bytes"
     ];
 
-    const fields = Object.keys(req.body ?? {});
+    const fileData = {...req.body};
+    delete fileData.uploaded_by;
+    const fields = Object.keys(fileData);
 
     if (fields.length === 0) {
         return res.status(400).json({
@@ -540,7 +575,7 @@ router.patch("/files/:id", validateId, async (req, res, next) => {
         });
     }
 
-    const errors = validateFile(req.body, "patch");
+    const errors = validateFile(fileData, "patch");
 
     if (errors.length > 0) {
         return res.status(400).json({
@@ -553,10 +588,10 @@ router.patch("/files/:id", validateId, async (req, res, next) => {
     const updates = [];
 
     for (const field of fields) {
-        let value = req.body[field];
+        let value = fileData[field];
 
         if (
-            ["record_id", "file_size_bytes", "uploaded_by"].includes(field) &&
+            ["record_id", "file_size_bytes"].includes(field) &&
             value !== null
         ) {
             value = Number(value);
@@ -593,7 +628,7 @@ router.patch("/files/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.delete("/files/:id", validateId, async (req, res, next) => {
+router.delete("/files/:id", validateId, requireFileOwnerOrAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(
             `
@@ -611,10 +646,17 @@ router.delete("/files/:id", validateId, async (req, res, next) => {
         const storagePath = result.rows[0].storage_path;
 
         if (storagePath?.startsWith("/uploads/")) {
-            const storedFileName = path.basename(storagePath);
-            await removeUploadedFile(
-                path.join(uploadsDirectory, storedFileName)
+            const remainingReferences = await pool.query(
+                "SELECT 1 FROM record_files WHERE storage_path = $1 LIMIT 1",
+                [storagePath]
             );
+
+            if (remainingReferences.rows.length === 0) {
+                const storedFileName = path.basename(storagePath);
+                await removeUploadedFile(
+                    path.join(uploadsDirectory, storedFileName)
+                );
+            }
         }
 
         return res.status(204).send();
@@ -623,7 +665,7 @@ router.delete("/files/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.get("/signatures", async (req, res, next) => {
+router.get("/signatures", requireAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(`
             SELECT *
@@ -637,7 +679,7 @@ router.get("/signatures", async (req, res, next) => {
     }
 });
 
-router.get("/signatures/:id", validateId, async (req, res, next) => {
+router.get("/signatures/:id", validateId, requireAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(
             `
@@ -658,7 +700,7 @@ router.get("/signatures/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.post("/signatures", async (req, res, next) => {
+router.post("/signatures", requireAdmin, async (req, res, next) => {
     const errors = validateSignature(req.body, "create");
 
     if (errors.length > 0) {
@@ -707,7 +749,7 @@ router.post("/signatures", async (req, res, next) => {
     }
 });
 
-router.put("/signatures/:id", validateId, async (req, res, next) => {
+router.put("/signatures/:id", validateId, requireAdmin, async (req, res, next) => {
     const errors = validateSignature(req.body, "put");
 
     if (errors.length > 0) {
@@ -761,7 +803,7 @@ router.put("/signatures/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.patch("/signatures/:id", validateId, async (req, res, next) => {
+router.patch("/signatures/:id", validateId, requireAdmin, async (req, res, next) => {
     const allowedFields = [
         "record_type",
         "record_id",
@@ -844,7 +886,7 @@ router.patch("/signatures/:id", validateId, async (req, res, next) => {
     }
 });
 
-router.delete("/signatures/:id", validateId, async (req, res, next) => {
+router.delete("/signatures/:id", validateId, requireAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(
             `
