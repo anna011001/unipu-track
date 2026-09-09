@@ -433,7 +433,7 @@ export const reportSections = [
   },
   {
     number: '10',
-    title: 'Na(do)građivanje i re/kreiranje studentskog iskustva',
+    title: 'Nadograđivanje i rekreiranje studentskog iskustva',
     narrative: 'student_experience_text',
     limit: 2500,
     hint: 'U ovom dijelu potrebno je opisati aktivnosti i inicijative usmjerene na obogaćivanje studentskog iskustva izvan standardnog nastavnog procesa.\nMolimo osvrnuti se na:\nmobilnost studenata (odlazne i dolazne mobilnosti)\nuključivanje studenata u terensku nastavu i praktične aktivnosti\nsudjelovanje na natjecanjima i postignute rezultate\nnagrade i priznanja za studentske radove\nizvannastavne i društveno korisne aktivnosti\nuočene trendove i planirane mjere unaprjeđenja studentskog iskustva.\nNije potrebno ponavljati podatke iz tablica, već ih interpretirati i istaknuti aktivnosti koje su imale poseban značaj ili veći odaziv studenata.',
