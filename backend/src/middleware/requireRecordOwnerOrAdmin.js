@@ -89,8 +89,14 @@ export async function requireRecordOwnerOrAdmin(req, res, next) {
     return next();
   }
 
-  const pathParts = req.path.split("/").filter(Boolean);
-  const recordId = Number(pathParts.at(-1));
+  const pathParts = req.path.toLowerCase().split("/").filter(Boolean);
+  let recordId;
+  try {
+    // Express matches routes without case sensitivity and decodes route parameters.
+    recordId = Number(decodeURIComponent(pathParts.at(-1)));
+  } catch {
+    return res.status(400).json({ message: "ID mora biti pozitivan cijeli broj." });
+  }
 
   if (!Number.isInteger(recordId) || recordId <= 0) {
     return next();

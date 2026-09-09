@@ -32,7 +32,14 @@ const editableFields = computed(() =>
 )
 
 function clone(value) {
-  return JSON.parse(JSON.stringify(value ?? []))
+  const rows = JSON.parse(JSON.stringify(value ?? []))
+  for (const row of rows) {
+    for (const field of props.config.fields) {
+      if (field.type === 'date' && row[field.name])
+        row[field.name] = String(row[field.name]).slice(0, 10)
+    }
+  }
+  return rows
 }
 
 function display(field, row) {
@@ -74,6 +81,7 @@ function blankRow() {
 }
 
 function addRow() {
+  if (saving.value) return
   if (!editing.value) {
     draft.value = clone(props.rows)
     deletedIds.value = []
@@ -145,6 +153,7 @@ function apiError(exception) {
 }
 
 async function save() {
+  if (saving.value) return
   error.value = validate()
   if (error.value) return
   saving.value = true
@@ -158,14 +167,21 @@ async function save() {
       )
       payload.faculty_report_id = props.reportId
       payload.updated_by = userId
+      let response
       if (row.id) {
-        const response = await api.patch(`/api/faculty/${props.config.endpoint}/${row.id}`, payload)
-        saved.push(response.data)
+        response = await api.patch(`/api/faculty/${props.config.endpoint}/${row.id}`, payload)
       } else {
         payload.created_by = userId
-        const response = await api.post(`/api/faculty/${props.config.endpoint}`, payload)
-        saved.push(response.data)
+        response = await api.post(`/api/faculty/${props.config.endpoint}`, payload)
       }
+      // Keep completed writes even if a later row fails, so retries use PATCH.
+      Object.assign(row, clone([response.data])[0])
+      saved.push(response.data)
+      const persistedRows = [...props.rows]
+      const index = persistedRows.findIndex((item) => Number(item.id) === Number(row.id))
+      if (index >= 0) persistedRows[index] = response.data
+      else persistedRows.push(response.data)
+      emit('changed', persistedRows)
     }
     editing.value = false
     selectedIndex.value = null
@@ -191,7 +207,13 @@ async function save() {
           <button type="button" :disabled="saving" @click="cancel">Odustani</button>
         </template>
         <button v-else type="button" :disabled="rows.length === 0" @click="beginEdit">Uredi</button>
-        <button type="button" aria-label="Dodaj redak" title="Dodaj redak" @click="addRow">
+        <button
+          type="button"
+          aria-label="Dodaj redak"
+          title="Dodaj redak"
+          :disabled="saving"
+          @click="addRow"
+        >
           +
         </button>
         <button
@@ -232,6 +254,7 @@ async function save() {
                 <select
                   v-if="field.type === 'select'"
                   v-model="row[field.name]"
+                  :disabled="saving"
                   class="table-control"
                 >
                   <option value="">Odaberite</option>
@@ -242,12 +265,14 @@ async function save() {
                 <textarea
                   v-else-if="field.type === 'textarea'"
                   v-model="row[field.name]"
+                  :disabled="saving"
                   class="table-control table-textarea"
                   rows="2"
                 />
                 <input
                   v-else
                   v-model="row[field.name]"
+                  :disabled="saving"
                   class="table-control"
                   :type="field.type === 'url' ? 'url' : field.type"
                   :min="field.min"

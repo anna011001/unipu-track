@@ -94,8 +94,6 @@ app.use("/api/survey-action-plans", setAuditUser, surveyActionPlansRouter);
 app.use("/api/faculty", setAuditUser, facultyReportsRouter);
 app.use("/api/record-files", recordFilesRouter);
 app.use("/api/dashboard", dashboardRouter);
-app.use(notFound);
-app.use(errorHandler);
 
 app.get("/", (req, res) => {
   res.json({
@@ -125,6 +123,13 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`UNIPU Track API is listening on port ${port}.`);
-});
+app.use(notFound);
+app.use(errorHandler);
+
+export default app;
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(port, () => {
+    console.log(`UNIPU Track API is listening on port ${port}.`);
+  });
+}
