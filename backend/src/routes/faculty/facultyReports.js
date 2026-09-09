@@ -441,9 +441,9 @@ const configs = [
             { name: "faculty_report_id", label: "ID izvješća fakulteta", type: "id", required: true },
             { name: "enrollment_year_label", label: "Generacija", type: "text", maxLength: 10, required: true },
             { name: "enrolled_count", label: "Broj upisanih", type: "integer", min: 0, max: 9999 },
-            { name: "employed_outside_count", label: "Zaposleni izvan Sveučilišta", type: "integer", min: 0, max: 9999 },
-            { name: "active_count", label: "Aktivni", type: "integer", min: 0, max: 9999 },
-            { name: "withdrawn_count", label: "Odustali", type: "integer", min: 0, max: 9999 },
+            { name: "employed_outside_unipu_count", label: "Zaposleni izvan Sveučilišta", type: "integer", min: 0, max: 9999 },
+            { name: "active_status_count", label: "Aktivni", type: "integer", min: 0, max: 9999 },
+            { name: "withdrawn_no_status_count", label: "Odustali", type: "integer", min: 0, max: 9999 },
             { name: "graduated_count", label: "Završili", type: "integer", min: 0, max: 9999 },
             { name: "mobility_count", label: "Mobilnosti", type: "integer", min: 0, max: 9999 }
         ]
@@ -487,9 +487,9 @@ const configs = [
             { name: "faculty_report_id", label: "ID izvješća fakulteta", type: "id", required: true },
             { name: "enrollment_year_label", label: "Generacija", type: "text", maxLength: 10, required: true },
             { name: "enrolled_count", label: "Broj upisanih", type: "integer", min: 0, max: 9999 },
-            { name: "employed_outside_count", label: "Zaposleni izvan Sveučilišta", type: "integer", min: 0, max: 9999 },
-            { name: "active_count", label: "Aktivni", type: "integer", min: 0, max: 9999 },
-            { name: "withdrawn_count", label: "Odustali", type: "integer", min: 0, max: 9999 },
+            { name: "employed_outside_unipu_count", label: "Zaposleni izvan Sveučilišta", type: "integer", min: 0, max: 9999 },
+            { name: "active_status_count", label: "Aktivni", type: "integer", min: 0, max: 9999 },
+            { name: "withdrawn_no_status_count", label: "Odustali", type: "integer", min: 0, max: 9999 },
             { name: "graduated_count", label: "Završili", type: "integer", min: 0, max: 9999 },
             { name: "mobility_count", label: "Mobilnosti", type: "integer", min: 0, max: 9999 }
         ]
@@ -612,10 +612,10 @@ const configs = [
         fields: [
             { name: "faculty_report_id", label: "ID izvješća fakulteta", type: "id", required: true },
             { name: "mobility_direction", label: "Smjer mobilnosti", type: "text", maxLength: 10, required: true },
-            { name: "current_erasmus_count", label: "Trenutni Erasmus", type: "integer", min: 0, max: 9999 },
-            { name: "previous_erasmus_count", label: "Prethodni Erasmus", type: "integer", min: 0, max: 9999 },
-            { name: "current_other_count", label: "Trenutne ostale mobilnosti", type: "integer", min: 0, max: 9999 },
-            { name: "previous_other_count", label: "Prethodne ostale mobilnosti", type: "integer", min: 0, max: 9999 }
+            { name: "current_erasmus", label: "Trenutni Erasmus", type: "integer", min: 0, max: 9999 },
+            { name: "previous_erasmus", label: "Prethodni Erasmus", type: "integer", min: 0, max: 9999 },
+            { name: "current_other", label: "Trenutne ostale mobilnosti", type: "integer", min: 0, max: 9999 },
+            { name: "previous_other", label: "Prethodne ostale mobilnosti", type: "integer", min: 0, max: 9999 }
         ]
     },
     {
